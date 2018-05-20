@@ -19,6 +19,7 @@ import cherrypy
 import json
 import urllib2
 import sqlite3
+import time
 from hashlib import sha256
 
 class MainApp(object):
@@ -43,7 +44,8 @@ class MainApp(object):
         Page = "Welcome! This is a test website for COMPSYS302!<br/>"
         Page += "Click here to <a href='login'>login</a>."
         return Page
-        
+    
+    #Login page    
     @cherrypy.expose
     def login(self, bool=0):
         Page = '<form action="/signin" method="post" enctype="multipart/form-data">'
@@ -54,10 +56,6 @@ class MainApp(object):
             Page += "Unauthenticated User"
         return Page
     
-    @cherrypy.expose    
-    def sum(self, a=0, b=0): #All inputs are strings by default
-        output = int(a)+int(b)
-        return str(output)
         
     # LOGGING IN AND OUT
     @cherrypy.expose
@@ -73,6 +71,7 @@ class MainApp(object):
         elif (string == '2, Unauthenticated user'):
             raise cherrypy.HTTPRedirect('/login?bool=')
 
+	#Manual signout
     @cherrypy.expose
     def signout(self):
         """Logs the current user out, expires their session"""
@@ -81,6 +80,7 @@ class MainApp(object):
         cherrypy.lib.sessions.expire()
         raise cherrypy.HTTPRedirect('/')
 	
+    #Profile page
     @cherrypy.expose
     def profile(self):
         #profile page
@@ -90,29 +90,36 @@ class MainApp(object):
         file = open("html/profile.html", "r")
         Page = file.read()
         file.close()
-        #Buttons for Displaying online users and signout
+        #Button for Displaying online users
         Page += '<form action="/getUsers" method="post" enctype="multipart/form-data"><br/>'
         Page += '<input type="submit" value="Display Online Users"/></form>'
+        #Button for profile editing
         Page += '<form action="/editProfile" method="post" enctype="multipart/form-data"><br/>'
         Page += '<input type="submit" value="Edit Profile"/></form>'
+        #Button to signout
         Page += '<form action="/signout" method="post" enctype="multipart/form-data"><br/>'
         Page += '<input type="submit" value="Signout"/></form>'
+        #Displays user info
         Page += "<b style='color:tomato'>Name: " + str(data[0]) + "</b><br/>"
         Page += "<b style='color:tomato'>Position: " + str(data[1]) + "</b><br/>"
         Page += "<b style='color:tomato'>Description: " + str(data[2]) + "</b><br/>"
         Page += "<b style='color:tomato'>Location: " + str(data[3]) + "</b><br/>"
+        #Button to start messaging
+        Page += '<form action="/messaging" method="post" enctype="multipart/form-data"><br/>'
+        Page += '<input type="submit" value="Talk With Others"/></form>'
         return Page
 
+    #Page for the user to edit their profile details
     @cherrypy.expose
     def editProfile(self):
         self.checkLogged()
         data = self.readUserData()
         Page = '<form action="/writeInfo" method="post" enctype="multipart/form-data">'
-        Page += 'Name: <input type="text" value="default value" name="name"/><br/>'
-        Page += 'Position: <input type="text" value="default value" name="position"/><br/>'
-        Page += 'Description: <input type="text" value="default value" name="description"/><br/>'
-        Page += 'Location: <input type="text" value="default value" name="location"/><br/>'
-        Page += '<input type="submit" value="Login"/></form>'
+        Page += 'Name: <input type="text" value="' + str(data[0]) + '" name="name"/><br/>'
+        Page += 'Position: <input type="text" value="' + str(data[1]) + '" name="position"/><br/>'
+        Page += 'Description: <input type="text" value="' + str(data[2]) + '" name="description"/><br/>'
+        Page += 'Location: <input type="text" value="' + str(data[3]) + '" name="location"/><br/>'
+        Page += '<input type="submit" value="Save"/></form>'
         return Page
 	
 	#Used to update the database with new user info
@@ -128,21 +135,40 @@ class MainApp(object):
         db.commit()
         db.close()
         raise cherrypy.HTTPRedirect('/profile')
-		
+
+    #Temp messaging page(Still not sure what to do here)
+    @cherrypy.expose
+    def messaging(self):
+        self.checkLogged()
+        Page = '<form action="/writeInfo" method="post" enctype="multipart/form-data">'
+        Page += '<input type="text" size="75" message="message"/><br/>'
+        Page += '<input type="submit" value="Send"/></form>'
+        Page += '<button type="button" onclick="myFunction()">Display time</button>'
+        Page += '<p id="time"></p>'
+        Page += '<script>function myFunction() { var d = new Date(); var seconds = d.getTime() / 1000; document.getElementById("time").innerHTML = "Seconds since time epoch: " + seconds;}</script>'
+        return Page
+    
+    #Temp messaging page(Still not sure what to do here)
+    #@cherrypy.expose
+    #def recieveMessage(sender, destination, message, stamp):
+    
+    
+    #Gets the list of online users
     @cherrypy.expose
     def getUsers(self):
         self.checkLogged()
         r = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'])
         Page = r.read()
         return Page
-
+	
 	#Page to display when trying to access particular pages while not logged in
     @cherrypy.expose
     def errorPage(self):
         Page = "You must login first.<br/>"
         Page += "Click here to <a href='login'>login</a>."
         return Page
-
+    
+    #Called to make sure you are logged in before being able to do anything which requires authentication e.g. profile editing or messaging
     def checkLogged(self):
         try:
             username = cherrypy.session['username']
@@ -150,16 +176,17 @@ class MainApp(object):
         except KeyError: #No logged in user
             raise cherrypy.HTTPRedirect('/errorPage')
         return
-		
+    
+    #Read user data stored in the database
     def readUserData(self):
         #Opening database and reading user info
-        conn = sqlite3.connect("db/Users.db")
-        c = conn.cursor()
+        db = sqlite3.connect("db/Users.db")
+        c = db.cursor()
         c.execute('SELECT Name,Position,Description,Location FROM User WHERE UPI="' + cherrypy.session['username'] + '"')
         #User info stored into a tuple, row
         row = c.fetchone()
         #Close db
-        conn.close()
+        db.close()
         return row
 		
 
