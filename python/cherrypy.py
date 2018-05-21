@@ -140,8 +140,8 @@ class MainApp(object):
     @cherrypy.expose
     def messaging(self):
         self.checkLogged()
-        Page = '<form action="/writeInfo" method="post" enctype="multipart/form-data">'
-        Page += '<input type="text" size="75" message="message"/><br/>'
+        Page = '<form action="/recieveMessage" method="post" enctype="multipart/form-data">'
+        Page += '<input type="text" size="75" name="jsonFile"/><br/>'
         Page += '<input type="submit" value="Send"/></form>'
         Page += '<button type="button" onclick="myFunction()">Display time</button>'
         Page += '<p id="time"></p>'
@@ -149,16 +149,28 @@ class MainApp(object):
         return Page
     
     #Temp messaging page(Still not sure what to do here)
-    #@cherrypy.expose
-    #def recieveMessage(sender, destination, message, stamp):
-    
+    @cherrypy.expose
+    def recieveMessage(self, jsonFile):
+        #jsonData = jsonFile
+        #jsonToPython = json.loads(jsonData)
+        #Page = jsonToPython['name']
+        return Page
     
     #Gets the list of online users
     @cherrypy.expose
     def getUsers(self):
         self.checkLogged()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'])
-        Page = r.read()
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'] + "&enc=0&json=1")
+        html = r.read()
+        dict = json.loads(html)
+        Page = ""
+        for id, info in dict.items():
+            for key in info:
+                if (key == 'username'):
+                    Page += info[key] + "<br/>"
+        #db = sqlite3.connect("db/Users.db")
+        #cursor = db.cursor()
+        #cursor.execute('''SELECT name, ip, FROM Profile WHERE id=?''', (user_id,))
         return Page
 	
 	#Page to display when trying to access particular pages while not logged in
@@ -182,7 +194,7 @@ class MainApp(object):
         #Opening database and reading user info
         db = sqlite3.connect("db/Users.db")
         c = db.cursor()
-        c.execute('SELECT Name,Position,Description,Location FROM User WHERE UPI="' + cherrypy.session['username'] + '"')
+        c.execute('SELECT Name,Position,Description,Location FROM Profile WHERE UPI="' + cherrypy.session['username'] + '"')
         #User info stored into a tuple, row
         row = c.fetchone()
         #Close db
