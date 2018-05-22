@@ -164,13 +164,21 @@ class MainApp(object):
         html = r.read()
         dict = json.loads(html)
         Page = ""
+        db = sqlite3.connect("db/Users.db")
+        cursor = db.cursor()
         for id, info in dict.items():
-            for key in info:
-                if (key == 'username'):
-                    Page += info[key] + "<br/>"
-        #db = sqlite3.connect("db/Users.db")
-        #cursor = db.cursor()
-        #cursor.execute('''SELECT name, ip, FROM Profile WHERE id=?''', (user_id,))
+            # Check if table users does not exist and create it
+            try:
+                cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP) VALUES(?,?,?,?,?,?,?)', (info['username'],"","","","","",""))
+                print ("im in here")
+            except:
+                pass
+            #Update IP Address
+            cursor.execute('UPDATE Profile SET IP = ? WHERE UPI = ?', (info['ip'], info['username']))
+            Page += info['username'] + "<br/>"
+            Page += info['ip'] + "<br/>"
+        db.commit()
+        db.close()
         return Page
 	
 	#Page to display when trying to access particular pages while not logged in
