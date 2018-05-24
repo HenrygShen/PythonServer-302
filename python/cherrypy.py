@@ -12,7 +12,7 @@
 
 # The address we listen for connections on
 listen_ip = "0.0.0.0"
-listen_port = 1234
+listen_port = 15010
 
 import os
 import cherrypy
@@ -47,22 +47,20 @@ class MainApp(object):
     
     #Login page    
     @cherrypy.expose
-    def login(self, bool=0):
+    def login(self):
         Page = '<form action="/signin" method="post" enctype="multipart/form-data">'
         Page += 'Username: <input type="text" name="username"/><br/>'
         Page += 'Password: <input type="password" name="password"/>'
         Page += '<input type="submit" value="Login"/></form>'
-        if (bool == 1):
-            Page += "Unauthenticated User"
         return Page
     
-        
+  
     # LOGGING IN AND OUT
     @cherrypy.expose
     def signin(self, username=None, password=None):
         """Check their name and password and send them either to the main page, or back to the main login screen."""
         hashedPW = sha256(password + username).hexdigest()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=2&ip=172.23.183.96&port=10001")
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=2&ip=125.238.197.121&port=15010")
         string = r.read()
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
@@ -85,35 +83,33 @@ class MainApp(object):
     def profile(self):
         #profile page
         self.checkLogged()
-        data = self.readUserData()
+        data = self.readUserData(cherrypy.session['username'])
         #Open and read html file
         file = open("html/profile.html", "r")
         Page = file.read()
         file.close()
-        #Button for Displaying online users
-        Page += '<form action="/getUsers" method="post" enctype="multipart/form-data"><br/>'
-        Page += '<input type="submit" value="Display Online Users"/></form>'
-        #Button for profile editing
-        Page += '<form action="/editProfile" method="post" enctype="multipart/form-data"><br/>'
-        Page += '<input type="submit" value="Edit Profile"/></form>'
-        #Button to signout
-        Page += '<form action="/signout" method="post" enctype="multipart/form-data"><br/>'
-        Page += '<input type="submit" value="Signout"/></form>'
         #Displays user info
-        Page += "<b style='color:tomato'>Name: " + str(data[0]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Position: " + str(data[1]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Description: " + str(data[2]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Location: " + str(data[3]) + "</b><br/>"
-        #Button to start messaging
-        Page += '<form action="/messaging" method="post" enctype="multipart/form-data"><br/>'
-        Page += '<input type="submit" value="Talk With Others"/></form>'
+        Page += "<b style='color:tomato'>Name: " + str(data[1]) + "</b><br/>"
+        Page += "<b style='color:tomato'>Position: " + str(data[2]) + "</b><br/>"
+        Page += "<b style='color:tomato'>Description: " + str(data[3]) + "</b><br/>"
+        Page += "<b style='color:tomato'>Location: " + str(data[4]) + "</b><br/>"
+        #Button for Displaying online users
+        Page += '<form action="/getUsers" method="post" enctype="multipart/form-data">'
+        Page += '<input class= "button" type="submit" value="Display Online Users"/></form>'
+        #Button for profile editing
+        Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
+        Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
+        #Button to signout
+        Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
+        Page += '<input class= "button" type="submit" value="Signout"/></form>'
+        Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
         return Page
 
     #Page for the user to edit their profile details
     @cherrypy.expose
     def editProfile(self):
         self.checkLogged()
-        data = self.readUserData()
+        data = self.readUserData(cherrypy.session['username'])
         Page = '<form action="/writeInfo" method="post" enctype="multipart/form-data">'
         Page += 'Name: <input type="text" value="' + str(data[0]) + '" name="name"/><br/>'
         Page += 'Position: <input type="text" value="' + str(data[1]) + '" name="position"/><br/>'
@@ -138,23 +134,46 @@ class MainApp(object):
 
     #Temp messaging page(Still not sure what to do here)
     @cherrypy.expose
-    def messaging(self):
+    def messaging(self, destination):
         self.checkLogged()
-        Page = '<form action="/recieveMessage" method="post" enctype="multipart/form-data">'
-        Page += '<input type="text" size="75" name="jsonFile"/><br/>'
+        Page = '<form action="/sendMessage?destination=' + destination + '" method="post" enctype="multipart/form-data">'
+        Page += 'Message: <input type="text" size="75" name="message"/><br/>'
         Page += '<input type="submit" value="Send"/></form>'
         Page += '<button type="button" onclick="myFunction()">Display time</button>'
         Page += '<p id="time"></p>'
         Page += '<script>function myFunction() { var d = new Date(); var seconds = d.getTime() / 1000; document.getElementById("time").innerHTML = "Seconds since time epoch: " + seconds;}</script>'
         return Page
-    
-    #Temp messaging page(Still not sure what to do here)
+		
+    #Send Message API
     @cherrypy.expose
-    def recieveMessage(self, jsonFile):
-        #jsonData = jsonFile
-        #jsonToPython = json.loads(jsonData)
-        #Page = jsonToPython['name']
-        return Page
+    def sendMessage(self, message = None, destination = None):
+        self.checkLogged()
+        data = self.readUserData(destination)
+        stamp = str(time.time())
+        r = urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/receiveMessage?sender=' + cherrypy.session['username'] + '&destination=' + destination + '&message=' + message + '&stamp=' + stamp)
+        if (r.read() == '0'):
+            raise cherrypy.HTTPRedirect('/profile')
+        else:
+            return "IT DIDN'T WORK"
+		
+    #Recieve Message API
+    @cherrypy.expose
+    def receiveMessage(self, sender, destination, message, stamp):
+        #dataDict = json.loads(json)
+        stamp = str(stamp)
+        db = sqlite3.connect('db/Users.db')
+        # Check if table users does not exist and create it
+        cursor = db.cursor()
+        cursor.execute('CREATE TABLE IF NOT EXISTS ' + sender + '(Message TEXT, Stamp TEXT)')
+        cursor.execute('INSERT INTO ' + sender + '(Message, Stamp) VALUES (?,?)', (message, stamp))
+        db.commit()
+        db.close()
+        return '0'
+	
+    #Ping API
+    @cherrypy.expose
+    def ping(self, sender):
+        return '0'
     
     #Gets the list of online users
     @cherrypy.expose
@@ -167,16 +186,19 @@ class MainApp(object):
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
         for id, info in dict.items():
-            # Check if table users does not exist and create it
+            # Check if the user does not exist and create it
             try:
-                cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP) VALUES(?,?,?,?,?,?,?)', (info['username'],"","","","","",""))
-                print ("im in here")
+                cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP, Port) VALUES(?,?,?,?,?,?,?,?)', (info['username'],"","","","","","",""))
             except:
                 pass
             #Update IP Address
             cursor.execute('UPDATE Profile SET IP = ? WHERE UPI = ?', (info['ip'], info['username']))
-            Page += info['username'] + "<br/>"
-            Page += info['ip'] + "<br/>"
+            cursor.execute('UPDATE Profile SET Port = ? WHERE UPI = ?', (info['port'], info['username']))
+            if (info['username'] != cherrypy.session['username']):
+                Page += info['username'] + "<br/>"
+                #Button for messaging an online user
+                Page += '<form action="/messaging?destination=' + info['username'] + '" method="post" enctype="multipart/form-data"><br/>'
+                Page += '<input type="submit" value="Message"/></form>'
         db.commit()
         db.close()
         return Page
@@ -198,11 +220,12 @@ class MainApp(object):
         return
     
     #Read user data stored in the database
-    def readUserData(self):
+    def readUserData(self, user):
+        self.checkLogged()
         #Opening database and reading user info
         db = sqlite3.connect("db/Users.db")
         c = db.cursor()
-        c.execute('SELECT Name,Position,Description,Location FROM Profile WHERE UPI="' + cherrypy.session['username'] + '"')
+        c.execute('SELECT * FROM Profile WHERE UPI="' + user + '"')
         #User info stored into a tuple, row
         row = c.fetchone()
         #Close db
@@ -213,7 +236,14 @@ class MainApp(object):
           
 def runMainApp():
     # Create an instance of MainApp and tell Cherrypy to send all requests under / to it. (ie all of them)
-    cherrypy.tree.mount(MainApp(), "/")
+    conf={
+		'/static' : {
+					'tools.staticdir.on'  : True,
+					'tools.staticdir.dir' : os.getcwd()
+					
+				}
+    }
+    cherrypy.tree.mount(MainApp(), "/", conf)
 
     # Tell Cherrypy to listen for connections on the configured address and port.
     cherrypy.config.update({'server.socket_host': listen_ip,
