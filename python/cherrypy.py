@@ -12,7 +12,7 @@
 
 # The address we listen for connections on
 listen_ip = "0.0.0.0"
-listen_port = 15010
+listen_port = 10010
 
 import os
 import cherrypy
@@ -48,10 +48,10 @@ class MainApp(object):
     #Login page    
     @cherrypy.expose
     def login(self):
-        Page = '<form action="/signin" method="post" enctype="multipart/form-data">'
-        Page += 'Username: <input type="text" name="username"/><br/>'
-        Page += 'Password: <input type="password" name="password"/>'
-        Page += '<input type="submit" value="Login"/></form>'
+        #Open and read html file
+        file = open("html/login.html", "r")
+        Page = file.read()
+        file.close()
         return Page
     
   
@@ -60,7 +60,8 @@ class MainApp(object):
     def signin(self, username=None, password=None):
         """Check their name and password and send them either to the main page, or back to the main login screen."""
         hashedPW = sha256(password + username).hexdigest()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=2&ip=125.238.197.121&port=15010")
+        data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=2&ip=" + data['ip'] + "&port=" + str(listen_port))
         string = r.read()
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
@@ -149,7 +150,10 @@ class MainApp(object):
     def sendMessage(self, message = None, destination = None):
         self.checkLogged()
         data = self.readUserData(destination)
-        stamp = str(time.time())
+        stamp = str(time.time()) #Get rid of this when json encoding is finished
+        dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
+        jsonData = json.dumps(dict)
+        #req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage?', jsonData, {"Content-Type": 'application/json'})
         r = urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/receiveMessage?sender=' + cherrypy.session['username'] + '&destination=' + destination + '&message=' + message + '&stamp=' + stamp)
         if (r.read() == '0'):
             raise cherrypy.HTTPRedirect('/profile')

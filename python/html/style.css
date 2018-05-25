@@ -13,6 +13,10 @@
 	color: white;
 }
 
+.font-color {
+	color: tomato;
+}
+
 .button {
   background-color: #ff8080;
   border: none;
