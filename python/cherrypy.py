@@ -41,34 +41,30 @@ class MainApp(object):
     # PAGES (which return HTML that can be viewed in browser)
     @cherrypy.expose
     def index(self):
-        Page = "Welcome! This is a test website for COMPSYS302!<br/>"
-        Page += "Click here to <a href='login'>login</a>."
-        return Page
+        return self.readHtml("index")
     
     #Login page    
     @cherrypy.expose
     def login(self):
-        #Open and read html file
-        file = open("html/login.html", "r")
-        Page = file.read()
-        file.close()
-        return Page
+        return self.readHtml("login")
     
   
     # LOGGING IN AND OUT
     @cherrypy.expose
-    def signin(self, username=None, password=None):
+    def signin(self, username, password, location):
         """Check their name and password and send them either to the main page, or back to the main login screen."""
         hashedPW = sha256(password + username).hexdigest()
         data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=2&ip=" + data['ip'] + "&port=" + str(listen_port))
+        #If location = 0, use local IP, location = 2, use external ip
+        #socket.gethostbyname(socket.gethostname())
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=" + location + "&ip=" + data['ip'] + "&port=" + str(listen_port))
         string = r.read()
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
             cherrypy.session['password'] = hashedPW;
             raise cherrypy.HTTPRedirect('/profile')
         elif (string == '2, Unauthenticated user'):
-            raise cherrypy.HTTPRedirect('/login?bool=')
+            raise cherrypy.HTTPRedirect('/login')
 
 	#Manual signout
     @cherrypy.expose
@@ -235,6 +231,14 @@ class MainApp(object):
         #Close db
         db.close()
         return row
+
+    #Opening Html files to return to the page		
+    def readHtml(self, html):
+        #Open and read html file
+        file = open("html/" + html + ".html", "r")
+        Page = file.read()
+        file.close()
+        return Page
 		
 
           
