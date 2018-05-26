@@ -86,10 +86,10 @@ class MainApp(object):
         Page = file.read()
         file.close()
         #Displays user info
-        Page += "<b style='color:tomato'>Name: " + str(data[1]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Position: " + str(data[2]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Description: " + str(data[3]) + "</b><br/>"
-        Page += "<b style='color:tomato'>Location: " + str(data[4]) + "</b><br/>"
+        Page += "<b style='color:tomato'>Name: " + data[1] + "</b><br/>"
+        Page += "<b style='color:tomato'>Position: " + data[2] + "</b><br/>"
+        Page += "<b style='color:tomato'>Description: " + data[3] + "</b><br/>"
+        Page += "<b style='color:tomato'>Location: " + data[4] + "</b><br/>"
         #Button for Displaying online users
         Page += '<form action="/getUsers" method="post" enctype="multipart/form-data">'
         Page += '<input class= "button" type="submit" value="Display Online Users"/></form>'
@@ -101,6 +101,20 @@ class MainApp(object):
         Page += '<input class= "button" type="submit" value="Signout"/></form>'
         Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
         return Page
+		
+    #getProfile API
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    def getProfile(self):
+        dataDict = cherrypy.request.json
+        if (cherrypy.session['username'] == dataDict['profile_username'])
+            print dataDict['sender'] + " has tried to retrieve your profile"
+            userData = self.readUserData(dataDict['profile_username'])
+            outputData = { "fullname": data[1], "position": data[2], "description": data[3], "location": data[4], "picture": data[5]}
+            return json.dumps(outputData)
+        else:
+            return 'Failed'
+        
 
     #Page for the user to edit their profile details
     @cherrypy.expose
