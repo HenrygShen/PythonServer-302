@@ -12,7 +12,7 @@
 
 # The address we listen for connections on
 listen_ip = "0.0.0.0"
-listen_port = 10010
+listen_port = 15010
 
 import os
 import cherrypy
@@ -121,10 +121,10 @@ class MainApp(object):
         self.checkLogged()
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
-        cursor.execute("UPDATE User SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
-        cursor.execute("UPDATE User SET Position = ? WHERE UPI = ? ", (position, cherrypy.session['username']))
-        cursor.execute("UPDATE User SET Description = ? WHERE UPI = ? ", (description, cherrypy.session['username']))
-        cursor.execute("UPDATE User SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (position, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (description, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
         db.commit()
         db.close()
         raise cherrypy.HTTPRedirect('/profile')
@@ -133,41 +133,52 @@ class MainApp(object):
     @cherrypy.expose
     def messaging(self, destination):
         self.checkLogged()
-        Page = '<form action="/sendMessage?destination=' + destination + '" method="post" enctype="multipart/form-data">'
-        Page += 'Message: <input type="text" size="75" name="message"/><br/>'
-        Page += '<input type="submit" value="Send"/></form>'
-        Page += '<button type="button" onclick="myFunction()">Display time</button>'
-        Page += '<p id="time"></p>'
-        Page += '<script>function myFunction() { var d = new Date(); var seconds = d.getTime() / 1000; document.getElementById("time").innerHTML = "Seconds since time epoch: " + seconds;}</script>'
+        Page = self.readHtml("messaginghead")
+        db = sqlite3.connect("db/Conversation.db")
+        cursor = db.cursor()
+        #If it is the first time the user uses messaging, create a new table for that user
+        cursor.execute('CREATE TABLE IF NOT EXISTS ' + cherrypy.session['username'] + '(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL)')
+        cursor.execute("SELECT * FROM " + cherrypy.session['username'] + " WHERE UPI='" + destination + "'")
+        all_rows = cursor.fetchall()
+        for row in all_rows:
+            # row[0] returns the first column in the query (name), row[1] returns email column.
+            Page += '{0} : {1}<br/> {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+        db.close()
+        Page += "</div>"
+        Page += '<form action="/sendMessage?destination=' + destination + '" method="post" enctype="multipart/form-data">'
+        Page += '<p class="font-color">Message: <input type="text" size="75" name="message"/><input type="submit" value="Send" class="message-button"/></form></p>'
         return Page
 		
     #Send Message API
     @cherrypy.expose
     def sendMessage(self, message = None, destination = None):
         self.checkLogged()
+        #Read destination user's data
         data = self.readUserData(destination)
-        stamp = str(time.time()) #Get rid of this when json encoding is finished
-        dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
-        jsonData = json.dumps(dict)
-        #req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage?', jsonData, {"Content-Type": 'application/json'})
-        r = urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/receiveMessage?sender=' + cherrypy.session['username'] + '&destination=' + destination + '&message=' + message + '&stamp=' + stamp)
-        if (r.read() == '0'):
-            raise cherrypy.HTTPRedirect('/profile')
-        else:
-            return "IT DIDN'T WORK"
+        try:
+            #Ping recipient
+            if (urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/ping?sender=' + cherrypy.session['username']).read() == '0'):
+                #Create a dictionary with the arguments and encode it to JSON
+                dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
+                jsonData = json.dumps(dict)
+                req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage', jsonData, {"Content-Type": 'application/json'})
+                response = urllib2.urlopen(req)
+                if (response.read() == '0'):
+                    #If message was successfully sent, save the message into the database
+                    self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, time.time())
+                    raise cherrypy.HTTPRedirect('/sendMessage')
+                else:
+                    return response.read() + ",IT DIDN'T WORK"
+        except:
+            return "SOMETHING WENT WRONG"
 		
     #Recieve Message API
     @cherrypy.expose
-    def receiveMessage(self, sender, destination, message, stamp):
-        #dataDict = json.loads(json)
-        stamp = str(stamp)
-        db = sqlite3.connect('db/Users.db')
-        # Check if table users does not exist and create it
-        cursor = db.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS ' + sender + '(Message TEXT, Stamp TEXT)')
-        cursor.execute('INSERT INTO ' + sender + '(Message, Stamp) VALUES (?,?)', (message, stamp))
-        db.commit()
-        db.close()
+    @cherrypy.tools.json_in()
+    def receiveMessage(self):
+        dataDict = cherrypy.request.json
+        db = sqlite3.connect('db/Conversation.db')
+        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'])
         return '0'
 	
     #Ping API
@@ -240,6 +251,15 @@ class MainApp(object):
         file.close()
         return Page
 		
+    #Writing message to the db
+    def saveMessage(self, user, UPI, sender, message, stamp):
+        db = sqlite3.connect("db/Conversation.db")
+        cursor = db.cursor()
+        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL)')
+        cursor.execute('INSERT INTO ' + user + '(UPI, SENDER, Message, Stamp) VALUES (?,?,?,?)', (UPI, sender, message, stamp))
+        db.commit()
+        db.close()
+        return '0'
 
           
 def runMainApp():
