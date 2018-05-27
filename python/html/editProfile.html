@@ -1,0 +1,18 @@
+<html>
+<head>
+	<title>Edit Profile </title>
+	<link href='https://fonts.googleapis.com/css?family=Aclonica' rel='stylesheet'>
+	<link rel="stylesheet" type="text/css" href="/static/html/style.css">
+	<meta charset="UTF-8">
+</head>
+<body>
+	<h2 title="This is the header" class="header"> Edit Profile</h2>
+	<hr>
+	<form action="/writeInfo" method="post" enctype="multipart/form-data">
+    Name: <input type="text" value={0} name="name"/><br/>
+    Position: <input type="text" value={1} name="position"/><br/>
+    Description: <input type="text" value={2} name="description"/><br/>
+    Location: <input type="text" value={3} name="location"/><br/>
+    <input type="submit" value="Save" class="button"/></form>
+</body>
+</html>

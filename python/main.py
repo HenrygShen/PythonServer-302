@@ -1,8 +1,8 @@
 #!/usr/bin/python
-""" cherrypy_example.py
+""" main.py
 
     COMPSYS302 - Software Design
-    Author: Andrew Chen (andrew.chen@auckland.ac.nz)
+    Author: Henry Shen (hshe440@aucklanduni.ac.nz)
     Last Edited: 19/02/2018
 
     This program uses the CherryPy web server (from www.cherrypy.org).
@@ -54,7 +54,10 @@ class MainApp(object):
     def signin(self, username, password, location):
         """Check their name and password and send them either to the main page, or back to the main login screen."""
         hashedPW = sha256(password + username).hexdigest()
-        data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
+        try:
+		    data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
+        except:
+            data = {'ip':'125.238.197.121'}
         #If location = 0, use local IP, location = 2, use external ip
         #socket.gethostbyname(socket.gethostname())
         r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=" + location + "&ip=" + data['ip'] + "&port=" + str(listen_port))
@@ -62,7 +65,7 @@ class MainApp(object):
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
             cherrypy.session['password'] = hashedPW;
-            raise cherrypy.HTTPRedirect('/profile')
+            raise cherrypy.HTTPRedirect('/profile?user=' + username)
         elif (string == '2, Unauthenticated user'):
             raise cherrypy.HTTPRedirect('/login')
 
@@ -77,29 +80,29 @@ class MainApp(object):
 	
     #Profile page
     @cherrypy.expose
-    def profile(self):
+    def profile(self, user):
         #profile page
         self.checkLogged()
-        data = self.readUserData(cherrypy.session['username'])
+        data = self.readUserData(user)
         #Open and read html file
-        file = open("html/profile.html", "r")
-        Page = file.read()
-        file.close()
+        Page = self.readHtml("profile")
         #Displays user info
-        Page += "<b style='color:tomato'>Name: " + data[1] + "</b><br/>"
-        Page += "<b style='color:tomato'>Position: " + data[2] + "</b><br/>"
-        Page += "<b style='color:tomato'>Description: " + data[3] + "</b><br/>"
-        Page += "<b style='color:tomato'>Location: " + data[4] + "</b><br/>"
+        Page += "<b>Name: " + data[1] + "</b><br/>"
+        Page += "<b>Position: " + data[2] + "</b><br/>"
+        Page += "<b>Description: " + data[3] + "</b><br/>"
+        Page += "<b>Location: " + data[4] + "</b><br/>"
         #Button for Displaying online users
         Page += '<form action="/getUsers" method="post" enctype="multipart/form-data">'
         Page += '<input class= "button" type="submit" value="Display Online Users"/></form>'
-        #Button for profile editing
-        Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
-        Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
-        #Button to signout
-        Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
-        Page += '<input class= "button" type="submit" value="Signout"/></form>'
-        Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
+        if (cherrypy.session['username'] == user):
+            #TODO: make profile editing secure
+            #Button for profile editing
+            Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
+            Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
+            #Button to signout
+            Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
+            Page += '<input class= "button" type="submit" value="Signout"/></form>'
+            Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
         return Page
 		
     #getProfile API
@@ -107,7 +110,7 @@ class MainApp(object):
     @cherrypy.tools.json_in()
     def getProfile(self):
         dataDict = cherrypy.request.json
-        if (cherrypy.session['username'] == dataDict['profile_username'])
+        if (cherrypy.session['username'] == dataDict['profile_username']):
             print dataDict['sender'] + " has tried to retrieve your profile"
             userData = self.readUserData(dataDict['profile_username'])
             outputData = { "fullname": data[1], "position": data[2], "description": data[3], "location": data[4], "picture": data[5]}
@@ -121,15 +124,10 @@ class MainApp(object):
     def editProfile(self):
         self.checkLogged()
         data = self.readUserData(cherrypy.session['username'])
-        Page = '<form action="/writeInfo" method="post" enctype="multipart/form-data">'
-        Page += 'Name: <input type="text" value="' + str(data[0]) + '" name="name"/><br/>'
-        Page += 'Position: <input type="text" value="' + str(data[1]) + '" name="position"/><br/>'
-        Page += 'Description: <input type="text" value="' + str(data[2]) + '" name="description"/><br/>'
-        Page += 'Location: <input type="text" value="' + str(data[3]) + '" name="location"/><br/>'
-        Page += '<input type="submit" value="Save"/></form>'
-        return Page
+        Page = self.readHtml("editProfile")
+        return Page.format(data[1], data[2], data[3], data[4])
 	
-	#Used to update the database with new user info
+	#Used to update the database with new user info (
     @cherrypy.expose
     def writeInfo(self, name=None, position=None, description=None, location=None):
         self.checkLogged()
@@ -141,7 +139,31 @@ class MainApp(object):
         cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
         db.commit()
         db.close()
-        raise cherrypy.HTTPRedirect('/profile')
+        raise cherrypy.HTTPRedirect('/profile?user=' + cherrypy.session['username'])
+		
+    #Used to save the profile info retrieved from someone else
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    def saveInfo(self, UPI):
+        self.checkLogged()
+        data = self.readUserData(UPI)
+        dict = { "sender": cherrypy.session['username'], "profile_username": UPI }
+        jsonData = json.dumps(dict)
+        req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/getProfile', jsonData, {"Content-Type": 'application/json'})
+        response = urllib2.urlopen(req)
+        userData = cherrypy.request.json
+        db = sqlite3.connect("db/Users.db")
+        cursor = db.cursor()
+        cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
+        cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
+        cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
+        cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
+            #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (userData['picture'], UPI))
+        db.commit()
+        db.close()
+        raise cherrypy.HTTPRedirect('/profile?user=' + UPI)
+        #except:
+        #    raise cherrypy.HTTPRedirect('/getUsers')
 
     #Temp messaging page(Still not sure what to do here)
     @cherrypy.expose
@@ -155,37 +177,38 @@ class MainApp(object):
         cursor.execute("SELECT * FROM " + cherrypy.session['username'] + " WHERE UPI='" + destination + "'")
         all_rows = cursor.fetchall()
         for row in all_rows:
-            # row[0] returns the first column in the query (name), row[1] returns email column.
-            Page += '{0} : {1}<br/> {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+            if (row[1] == cherrypy.session['username']):
+                Page += '<span class="font-color1">'
+                Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                Page += '</span>'
+            else:
+                Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
         db.close()
         Page += "</div>"
-        Page += '<form action="/sendMessage?destination=' + destination + '" method="post" enctype="multipart/form-data">'
-        Page += '<p class="font-color">Message: <input type="text" size="75" name="message"/><input type="submit" value="Send" class="message-button"/></form></p>'
+        Page += '<form action="/sendMessage?destination=' + destination + '"method="post" enctype="multipart/form-data">'
+        Page += 'Message: <input type="text" size="75" name="message"/><input type="submit" value="Send" class="message-button"/></form>'
         return Page
 		
     #Send Message API
     @cherrypy.expose
-    def sendMessage(self, message = None, destination = None):
+    def sendMessage(self, message, destination):
         self.checkLogged()
         #Read destination user's data
         data = self.readUserData(destination)
-        try:
-            #Ping recipient
-            if (urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/ping?sender=' + cherrypy.session['username']).read() == '0'):
-                #Create a dictionary with the arguments and encode it to JSON
-                dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
-                jsonData = json.dumps(dict)
-                req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage', jsonData, {"Content-Type": 'application/json'})
-                response = urllib2.urlopen(req)
-                if (response.read() == '0'):
-                    #If message was successfully sent, save the message into the database
-                    self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, time.time())
-                    raise cherrypy.HTTPRedirect('/sendMessage')
-                else:
-                    return response.read() + ",IT DIDN'T WORK"
-        except:
-            return "SOMETHING WENT WRONG"
-		
+        #Ping recipient
+        if (urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/ping?sender=' + cherrypy.session['username']).read() == '0'):
+            #Create a dictionary with the arguments and encode it to JSON
+            dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
+            jsonData = json.dumps(dict)
+            req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage', jsonData, {'Content-Type': 'application/json'})
+            response = urllib2.urlopen(req)
+            if (response.read() == '0'):
+                #If message was successfully sent, save the message into the database
+                self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, time.time())
+                raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
+            else:
+                return response.read() + ",IT DIDN'T WORK"
+					
     #Recieve Message API
     @cherrypy.expose
     @cherrypy.tools.json_in()
@@ -221,6 +244,9 @@ class MainApp(object):
             cursor.execute('UPDATE Profile SET Port = ? WHERE UPI = ?', (info['port'], info['username']))
             if (info['username'] != cherrypy.session['username']):
                 Page += info['username'] + "<br/>"
+                #Button for viewing an online user's profile
+                Page += '<form action="/saveInfo?UPI=' + info['username'] + '" method="post" enctype="multipart/form-data"><br/>'
+                Page += '<input type="submit" value="View Profile"/></form>'
                 #Button for messaging an online user
                 Page += '<form action="/messaging?destination=' + info['username'] + '" method="post" enctype="multipart/form-data"><br/>'
                 Page += '<input type="submit" value="Message"/></form>'
@@ -269,7 +295,7 @@ class MainApp(object):
     def saveMessage(self, user, UPI, sender, message, stamp):
         db = sqlite3.connect("db/Conversation.db")
         cursor = db.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL)')
+        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT, Sender TEXT, Message TEXT, Stamp TEXT)')
         cursor.execute('INSERT INTO ' + user + '(UPI, SENDER, Message, Stamp) VALUES (?,?,?,?)', (UPI, sender, message, stamp))
         db.commit()
         db.close()
