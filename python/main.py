@@ -12,13 +12,16 @@
 
 # The address we listen for connections on
 listen_ip = "0.0.0.0"
-listen_port = 15010
+listen_port = 10010
 
+#except URLError,exception:
+#if isinstance()
 import os
 import cherrypy
 import json
 import urllib2
 import sqlite3
+import threading
 import time
 from hashlib import sha256
 
@@ -57,7 +60,9 @@ class MainApp(object):
         try:
 		    data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
         except:
-            data = {'ip':'125.238.197.121'}
+            #home = {'ip':'125.238.197.121'}
+            #uni wifi = {'ip':'202.36.244.33'}
+            data = {'ip':'202.36.244.33'}
         #If location = 0, use local IP, location = 2, use external ip
         #socket.gethostbyname(socket.gethostname())
         r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=" + location + "&ip=" + data['ip'] + "&port=" + str(listen_port))
@@ -103,6 +108,7 @@ class MainApp(object):
             Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
             Page += '<input class= "button" type="submit" value="Signout"/></form>'
             Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
+        self.function()
         return Page
 		
     #getProfile API
@@ -113,7 +119,7 @@ class MainApp(object):
         if (cherrypy.session['username'] == dataDict['profile_username']):
             print dataDict['sender'] + " has tried to retrieve your profile"
             userData = self.readUserData(dataDict['profile_username'])
-            outputData = { "fullname": data[1], "position": data[2], "description": data[3], "location": data[4], "picture": data[5]}
+            outputData = { "lastUpdated": "help", "fullname": data[1], "position": data[2], "description": data[3], "location": data[4], "picture": data[5]}
             return json.dumps(outputData)
         else:
             return 'Failed'
@@ -143,17 +149,19 @@ class MainApp(object):
 		
     #Used to save the profile info retrieved from someone else
     @cherrypy.expose
-    @cherrypy.tools.json_in()
     def saveInfo(self, UPI):
         self.checkLogged()
         data = self.readUserData(UPI)
         dict = { "sender": cherrypy.session['username'], "profile_username": UPI }
         jsonData = json.dumps(dict)
+        print "........................"
+        print dict
         req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/getProfile', jsonData, {"Content-Type": 'application/json'})
         response = urllib2.urlopen(req)
-        userData = cherrypy.request.json
+        userData = json.loads(response.read())
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
+        print userData
         cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
         cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
         cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
@@ -193,6 +201,9 @@ class MainApp(object):
     @cherrypy.expose
     def sendMessage(self, message, destination):
         self.checkLogged()
+		#Check if message is valid
+        if (message.strip() == ""):
+            raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
         #Read destination user's data
         data = self.readUserData(destination)
         #Ping recipient
@@ -227,10 +238,9 @@ class MainApp(object):
     @cherrypy.expose
     def getUsers(self):
         self.checkLogged()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'] + "&enc=0&json=1")
-        html = r.read()
-        dict = json.loads(html)
-        Page = ""
+        data = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'] + "&enc=0&json=1").read()
+        dict = json.loads(data)
+        Page = self.readHtml("onlineUsers")
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
         for id, info in dict.items():
@@ -245,11 +255,11 @@ class MainApp(object):
             if (info['username'] != cherrypy.session['username']):
                 Page += info['username'] + "<br/>"
                 #Button for viewing an online user's profile
-                Page += '<form action="/saveInfo?UPI=' + info['username'] + '" method="post" enctype="multipart/form-data"><br/>'
-                Page += '<input type="submit" value="View Profile"/></form>'
+                Page += '<form action="/saveInfo" method="post" enctype="multipart/form-data">'
+                Page += '<button name="UPI" value="' + info['username'] + '" class="button"/>View Profile</button></form>'
                 #Button for messaging an online user
-                Page += '<form action="/messaging?destination=' + info['username'] + '" method="post" enctype="multipart/form-data"><br/>'
-                Page += '<input type="submit" value="Message"/></form>'
+                Page += '<form action="/messaging" method="post" enctype="multipart/form-data">'
+                Page += '<button name="destination" value="' + info['username'] + '" class="button"/>Message</button></form>'
         db.commit()
         db.close()
         return Page
@@ -300,6 +310,10 @@ class MainApp(object):
         db.commit()
         db.close()
         return '0'
+		
+    def function(self):
+        print(time.ctime())
+        threading.Timer(10, function).start()
 
           
 def runMainApp():
