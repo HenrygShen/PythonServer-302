@@ -56,4 +56,18 @@
   width:900px;
   border:3px solid #ff8080;
   overflow:auto;
+  word-wrap: break-word;
+}
+
+.my-file {
+    display: none;
+}
+
+.get-file {
+    background: #f9f9f9;
+    border: 5px solid #88c;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px;
+    cursor: pointer;
 }

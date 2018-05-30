@@ -13,7 +13,7 @@
 # The address we listen for connections on
 listen_ip = "0.0.0.0"
 listen_port = 10010
-
+#data = urllib2.urlopen(req,timeout= 4).read()
 #except URLError,exception:
 #if isinstance()
 import os
@@ -21,9 +21,14 @@ import cherrypy
 import json
 import urllib2
 import sqlite3
-import threading
+import base64
+import mimetypes
 import time
+from threading import Event
+import myThread
 from hashlib import sha256
+from Tkinter import Tk
+from tkFileDialog import askopenfilename
 
 class MainApp(object):
 
@@ -58,11 +63,11 @@ class MainApp(object):
         """Check their name and password and send them either to the main page, or back to the main login screen."""
         hashedPW = sha256(password + username).hexdigest()
         try:
-		    data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
+            data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
         except:
-            #home = {'ip':'125.238.197.121'}
+            #home = {'ip':'121.74.247.219'}
             #uni wifi = {'ip':'202.36.244.33'}
-            data = {'ip':'202.36.244.33'}
+            data = {'ip':'121.74.247.219'}
         #If location = 0, use local IP, location = 2, use external ip
         #socket.gethostbyname(socket.gethostname())
         r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=" + location + "&ip=" + data['ip'] + "&port=" + str(listen_port))
@@ -70,6 +75,11 @@ class MainApp(object):
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
             cherrypy.session['password'] = hashedPW;
+            #creating a thread for periodic reports
+            global thread
+            thread = myThread.MyThread()
+            thread.setURL(username,hashedPW,location,data['ip'],str(listen_port))
+            thread.start()
             raise cherrypy.HTTPRedirect('/profile?user=' + username)
         elif (string == '2, Unauthenticated user'):
             raise cherrypy.HTTPRedirect('/login')
@@ -79,6 +89,7 @@ class MainApp(object):
     def signout(self):
         """Logs the current user out, expires their session"""
         self.checkLogged()
+        thread.stop()
         r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'])
         cherrypy.lib.sessions.expire()
         raise cherrypy.HTTPRedirect('/')
@@ -92,6 +103,7 @@ class MainApp(object):
         #Open and read html file
         Page = self.readHtml("profile")
         #Displays user info
+        Page += "<img src='/static/files/potato.jpg' alt='potato' width='400' height='400'><br/>"
         Page += "<b>Name: " + data[1] + "</b><br/>"
         Page += "<b>Position: " + data[2] + "</b><br/>"
         Page += "<b>Description: " + data[3] + "</b><br/>"
@@ -107,8 +119,6 @@ class MainApp(object):
             #Button to signout
             Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
             Page += '<input class= "button" type="submit" value="Signout"/></form>'
-            Page += '<button class="button" type="button" onclick="myFunction()">Send</button>'
-        self.function()
         return Page
 		
     #getProfile API
@@ -116,11 +126,13 @@ class MainApp(object):
     @cherrypy.tools.json_in()
     def getProfile(self):
         dataDict = cherrypy.request.json
-        if (cherrypy.session['username'] == dataDict['profile_username']):
+        #hardcoded UPI
+        if ("hshe440" == dataDict['profile_username']):
             print dataDict['sender'] + " has tried to retrieve your profile"
             userData = self.readUserData(dataDict['profile_username'])
-            outputData = { "lastUpdated": "help", "fullname": data[1], "position": data[2], "description": data[3], "location": data[4], "picture": data[5]}
-            return json.dumps(outputData)
+            outputData = {"lastUpdated": userData[8], "fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "picture": userData[5]}
+            returnData = json.dumps(outputData)
+            return returnData
         else:
             return 'Failed'
         
@@ -133,9 +145,9 @@ class MainApp(object):
         Page = self.readHtml("editProfile")
         return Page.format(data[1], data[2], data[3], data[4])
 	
-	#Used to update the database with new user info (
+	#Used to update the database with new user info
     @cherrypy.expose
-    def writeInfo(self, name=None, position=None, description=None, location=None):
+    def writeInfo(self, name=None, position=None, description=None, picture=None, location=None):
         self.checkLogged()
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
@@ -143,6 +155,11 @@ class MainApp(object):
         cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (position, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (description, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
+        #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (picture, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET stamp = ? WHERE UPI = ? ", (time.time(), cherrypy.session['username']))
+        img = open('files/hshe440.jpg', 'wb')
+        img = picture.read_into_file(fp_out=None)
+        img.close()
         db.commit()
         db.close()
         raise cherrypy.HTTPRedirect('/profile?user=' + cherrypy.session['username'])
@@ -151,26 +168,26 @@ class MainApp(object):
     @cherrypy.expose
     def saveInfo(self, UPI):
         self.checkLogged()
+        #Get user info
         data = self.readUserData(UPI)
+        #Create a dictionary with the input parameters to be encoded
         dict = { "sender": cherrypy.session['username'], "profile_username": UPI }
         jsonData = json.dumps(dict)
-        print "........................"
-        print dict
         req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/getProfile', jsonData, {"Content-Type": 'application/json'})
         response = urllib2.urlopen(req)
+        #read the response and decode it to a dictionary
         userData = json.loads(response.read())
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
-        print userData
         cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
         cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
         cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
         cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
-            #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (userData['picture'], UPI))
+        #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (userData['picture'], UPI))
         db.commit()
         db.close()
         raise cherrypy.HTTPRedirect('/profile?user=' + UPI)
-        #except:
+        #except:       
         #    raise cherrypy.HTTPRedirect('/getUsers')
 
     #Temp messaging page(Still not sure what to do here)
@@ -187,14 +204,23 @@ class MainApp(object):
         for row in all_rows:
             if (row[1] == cherrypy.session['username']):
                 Page += '<span class="font-color1">'
-                Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                if (row[4] == "notstring"):
+                    Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                else:
+                    Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
                 Page += '</span>'
             else:
-                Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                if (row[4] == "notstring"):
+                    Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                else:
+                    Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
         db.close()
         Page += "</div>"
-        Page += '<form action="/sendMessage?destination=' + destination + '"method="post" enctype="multipart/form-data">'
-        Page += 'Message: <input type="text" size="75" name="message"/><input type="submit" value="Send" class="message-button"/></form>'
+        #User input for message, and the send button
+        Page += '<form action="/sendMessage"method="post" enctype="multipart/form-data">'
+        Page += 'Message: <input type="text" size="75" name="message"/><button name="destination" value="' + destination +'" class="message-button"/>Send</button></form>'
+        Page += '<form action="/sendFile"method="post" enctype="multipart/form-data">'
+        Page += '<input type="file" name="filePath" id="upload"><button name="destination" value="'+ destination +'" class="message-button"/>Send File</button></form>'
         return Page
 		
     #Send Message API
@@ -209,13 +235,14 @@ class MainApp(object):
         #Ping recipient
         if (urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/ping?sender=' + cherrypy.session['username']).read() == '0'):
             #Create a dictionary with the arguments and encode it to JSON
-            dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": str(time.time()) }
+            stamp = time.time()
+            dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
             jsonData = json.dumps(dict)
             req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage', jsonData, {'Content-Type': 'application/json'})
             response = urllib2.urlopen(req)
             if (response.read() == '0'):
                 #If message was successfully sent, save the message into the database
-                self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, time.time())
+                self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
                 raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
             else:
                 return response.read() + ",IT DIDN'T WORK"
@@ -226,7 +253,44 @@ class MainApp(object):
     def receiveMessage(self):
         dataDict = cherrypy.request.json
         db = sqlite3.connect('db/Conversation.db')
-        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'])
+        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'], "string")
+        return '0'
+	
+	
+    @cherrypy.expose
+    def sendFile(self, destination, filePath, filename=None, stamp=None):
+        print filePath
+        #How the heck do you get the filepath
+        data = self.readUserData(destination)
+        fileToSend = open('files/potato.jpg', 'rb')
+        fileRead = fileToSend.read()
+        encodeFile = base64.encodestring(fileRead)
+        type = mimetypes.guess_type("potato.jpg",strict = True)
+        stamp = time.time()
+        dict = {"sender": cherrypy.session['username'], "destination": destination, "file": encodeFile, "filename": "potato.jpg", "content_type": type, "stamp": stamp}
+        jsonData = json.dumps(dict)
+        req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveFile', jsonData, {'Content-Type': 'application/json'})
+        response = urllib2.urlopen(req)
+        if (response.read() == '0'):
+            #If message was successfully sent, save the message into the database
+            self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/potato.jpg', stamp, "notstring")
+            raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
+        else:
+            return response.read() + ",IT DIDN'T WORK"
+		
+    #Recieve Message API
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    def receiveFile(self):
+        #sender,destination,file,filename,content_type,stamp,
+        dataDict = cherrypy.request.json
+        #Need to limit it to 5MB
+        #Need to save the sent file directory in the database
+        encodedData = base64.decodestring(dataDict['file'])
+        result = open('files/' + dataDict['filename'], 'wb')
+        result.write(encodedData)
+        result.close()
+        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], '/static/files/' + dataDict['filename'], dataDict['stamp'], "notstring")
         return '0'
 	
     #Ping API
@@ -282,7 +346,6 @@ class MainApp(object):
     
     #Read user data stored in the database
     def readUserData(self, user):
-        self.checkLogged()
         #Opening database and reading user info
         db = sqlite3.connect("db/Users.db")
         c = db.cursor()
@@ -301,19 +364,29 @@ class MainApp(object):
         file.close()
         return Page
 		
+    #Opening Html files to return to the page		
+    def browseFile(self):
+        #Something for file browsing idk
+        Tk().withdraw()
+        filename = askopenfilename() # show an "Open" dialog box and return the path to the selected file
+        print(filename)
+		
     #Writing message to the db
-    def saveMessage(self, user, UPI, sender, message, stamp):
+    def saveMessage(self, user, UPI, sender, message, stamp, type):
         db = sqlite3.connect("db/Conversation.db")
         cursor = db.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT, Sender TEXT, Message TEXT, Stamp TEXT)')
-        cursor.execute('INSERT INTO ' + user + '(UPI, SENDER, Message, Stamp) VALUES (?,?,?,?)', (UPI, sender, message, stamp))
+        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT, Sender TEXT, Message TEXT, Stamp TEXT, Type TEXT)')
+        cursor.execute('INSERT INTO ' + user + '(UPI, SENDER, Message, Stamp, Type) VALUES (?,?,?,?,?)', (UPI, sender, message, stamp, type))
         db.commit()
         db.close()
         return '0'
 		
-    def function(self):
-        print(time.ctime())
-        threading.Timer(10, function).start()
+    def myFunction(self):
+        Tkinter.Tk().withdraw() # Close the root window
+        in_path = tkFileDialog.askopenfilename()
+        print in_path
+
+		
 
           
 def runMainApp():
@@ -334,8 +407,7 @@ def runMainApp():
                            })
 
     print "========================="
-    print "University of Auckland"
-    print "COMPSYS302 - Software Design Application"
+    print "University of Auckland"     "COMPSYS302 - Software Design Application"
     print "========================================"                       
     
     # Start the web server
