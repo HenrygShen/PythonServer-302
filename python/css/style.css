@@ -52,24 +52,11 @@
 }.button:hover {opacity: 1}
 
 .message-box {
-  height:500px;
-  width:900px;
+  height:80%;
+  width:85%;
   border:3px solid #ff8080;
   overflow:auto;
   word-wrap: break-word;
-}
-
-.my-file {
-    display: none;
-}
-
-.get-file {
-    background: #f9f9f9;
-    border: 5px solid #88c;
-    padding: 15px;
-    border-radius: 5px;
-    margin: 10px;
-    cursor: pointer;
 }
 
 .online-users {
@@ -77,12 +64,17 @@
 	border:3px solid #ff8080;
 	overflow:auto;
 	position:absolute;
-	right:0;
-	width:200px
+	right:7;
+	width:10%
 }
 
-.test{
+.button-pos{
 	position:absolute;
-	right:0;
-	width:200px
+	bottom:0;
+	left:0;
+}
+
+.message-input{
+	border:1px solid #ff8080;
+	width:77.6%;
 }

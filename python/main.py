@@ -144,11 +144,11 @@ class MainApp(object):
     @cherrypy.tools.json_in()
     def getProfile(self):
         dataDict = cherrypy.request.json
-        #hardcoded UPI
-        if ("hshe440" == dataDict['profile_username']):
+        #Gets the user profile of the person logged in
+        if (cherrypy.session['username'] == dataDict['profile_username']):
             print dataDict['sender'] + " has tried to retrieve your profile"
             userData = functions.readUserData(dataDict['profile_username'])
-            outputData = {"lastUpdated": userData[8], "fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "picture": userData[5]}
+            outputData = {"fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "lastUpdated": userData[8]}
             returnData = json.dumps(outputData)
             return returnData
         else:
@@ -238,9 +238,11 @@ class MainApp(object):
         Page += "</div>"
         #User input for message, and the send button
         Page += '<form action="/sendMessage"method="post" enctype="multipart/form-data">'
-        Page += 'Message: <input type="text" size="75" name="message"/><button name="destination" value="{}" class="message-button"/>Send</button></form>'.format(destination)
+        Page += 'Message: <input type="text" class="message-input" name="message"/><button name="destination" value="{}" class="message-button"/>Send</button></form>'.format(destination)
         Page += '<form action="/sendFile"method="post" enctype="multipart/form-data">'
         Page += '<input type="file" name="filePath" id="upload"><button name="destination" value="{}" class="message-button"/>Send File</button></form>'.format(destination)
+        Page += '<form action="/profile?user={}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'])
+        Page += '<input type="submit" value="Back to Profile" class="button button-pos"/></form>'
         return Page
 		
     #Send Message API
