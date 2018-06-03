@@ -1,0 +1,41 @@
+<html lang="en">
+ 
+<head>
+ 
+<Title>File Upload Tutorial</Title>
+ 
+</head>
+ 
+<body>
+ 
+	<!--Content will go inside here.-->
+	<form action="uploadfiles.php" method="post" enctype="multipart/form-data">
+	Picture: <input type="file" id="image"><br/>
+ 
+	<input type="submit" value="Upload Now">
+ 
+	</form>
+	<p id="text">dasdasd</p>
+	<button onclick="myFunction()">Click</button>
+</body>
+<script>
+// From <input> node
+
+function myFunction() {
+  var elm = document.getElementById('image'),
+  img = elm.files[0],
+  fileName = img.name, // not path
+  fileSize = img.size; // bytes
+  document.getElementById("text").innerHTML = fileName;
+}
+// By Parsing File
+var reader = new FileReader(),
+    binary, base64;
+reader.addEventListener('loadend', function () {
+    binary = reader.result; // binary data (stored as string), unsafe for most actions
+    base64 = btoa(binary); // base64 data, safer but takes up more memory
+}, false);
+reader.readAsBinaryString(img);
+</script>
+ 
+</html>

@@ -71,3 +71,18 @@
     margin: 10px;
     cursor: pointer;
 }
+
+.online-users {
+	height:90%;
+	border:3px solid #ff8080;
+	overflow:auto;
+	position:absolute;
+	right:0;
+	width:200px
+}
+
+.test{
+	position:absolute;
+	right:0;
+	width:200px
+}

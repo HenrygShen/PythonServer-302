@@ -24,8 +24,11 @@ import sqlite3
 import base64
 import mimetypes
 import time
+import socket
+from itertools import cycle, izip
 from threading import Event
 import myThread
+import functions
 from hashlib import sha256
 from Tkinter import Tk
 from tkFileDialog import askopenfilename
@@ -49,28 +52,41 @@ class MainApp(object):
     # PAGES (which return HTML that can be viewed in browser)
     @cherrypy.expose
     def index(self):
-        return self.readHtml("index")
+        return functions.readHtml("index")
     
     #Login page    
     @cherrypy.expose
-    def login(self):
-        return self.readHtml("login")
+    def login(self, ec=None):
+        Page = functions.readHtml("login")
+        try:
+            if (ec == "2"):
+                Page += "Your username and/or password was incorrect"
+            elif (ec == "3"):
+                Page += "You have supplied an incorrect location"
+        except:
+            pass
+        return Page
     
   
     # LOGGING IN AND OUT
     @cherrypy.expose
     def signin(self, username, password, location):
-        """Check their name and password and send them either to the main page, or back to the main login screen."""
+        #Use SHA256 to hash the password
         hashedPW = sha256(password + username).hexdigest()
-        try:
-            data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
-        except:
-            #home = {'ip':'121.74.247.219'}
-            #uni wifi = {'ip':'202.36.244.33'}
-            data = {'ip':'121.74.247.219'}
-        #If location = 0, use local IP, location = 2, use external ip
-        #socket.gethostbyname(socket.gethostname())
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username=" + username + "&password=" + hashedPW + "&location=" + location + "&ip=" + data['ip'] + "&port=" + str(listen_port))
+        #If location = 0, use local IP, otherwise use external ip
+        ip = socket.gethostbyname(socket.gethostname())
+        if (location == "0"):
+            data = {'ip':socket.gethostbyname(socket.gethostname())}
+        else:
+            try:
+                data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
+            except:
+			    #hardcoded values for when the site is down/overloaded
+                if (location == "1"):
+                    data = {'ip':'202.36.244.33'}
+                else:
+                    data = {'ip':'121.74.247.219'}
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username={0}&password={1}&location={2}&ip={3}&port={4}".format(username,hashedPW,location,data['ip'],str(listen_port)))
         string = r.read()
         if (string == '0, User and IP logged'):
             cherrypy.session['username'] = username;
@@ -80,17 +96,20 @@ class MainApp(object):
             thread = myThread.MyThread()
             thread.setURL(username,hashedPW,location,data['ip'],str(listen_port))
             thread.start()
-            raise cherrypy.HTTPRedirect('/profile?user=' + username)
+            raise cherrypy.HTTPRedirect('/profile?user={}'.format(username))
         elif (string == '2, Unauthenticated user'):
-            raise cherrypy.HTTPRedirect('/login')
+            raise cherrypy.HTTPRedirect('/login?ec=2')
+        elif (string == '3, False IP address or location reported'):
+            raise cherrypy.HTTPRedirect('/login?ec=3')
+            
 
 	#Manual signout
     @cherrypy.expose
-    def signout(self):
+    def signout(self,username,password):
         """Logs the current user out, expires their session"""
-        self.checkLogged()
+        functions.checkLogged()
         thread.stop()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'])
+        r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username={0}&password={1}".format(username, password))
         cherrypy.lib.sessions.expire()
         raise cherrypy.HTTPRedirect('/')
 	
@@ -98,27 +117,26 @@ class MainApp(object):
     @cherrypy.expose
     def profile(self, user):
         #profile page
-        self.checkLogged()
-        data = self.readUserData(user)
+        functions.checkLogged()
+        data = functions.readUserData(user)
         #Open and read html file
-        Page = self.readHtml("profile")
+        Page = functions.readHtml("profile")
+        #Get online user list
+        Page = functions.getUsers(cherrypy.session['username'], Page)
         #Displays user info
         Page += "<img src='/static/files/potato.jpg' alt='potato' width='400' height='400'><br/>"
-        Page += "<b>Name: " + data[1] + "</b><br/>"
-        Page += "<b>Position: " + data[2] + "</b><br/>"
-        Page += "<b>Description: " + data[3] + "</b><br/>"
-        Page += "<b>Location: " + data[4] + "</b><br/>"
-        #Button for Displaying online users
-        Page += '<form action="/getUsers" method="post" enctype="multipart/form-data">'
-        Page += '<input class= "button" type="submit" value="Display Online Users"/></form>'
+        Page += "<b>Name: {}</b><br/>".format(data[1])
+        Page += "<b>Position: {}</b><br/>".format(data[2])
+        Page += "<b>Description: {}</b><br/>".format(data[3])
+        Page += "<b>Location: {}</b><br/>".format(data[4])
         if (cherrypy.session['username'] == user):
             #TODO: make profile editing secure
             #Button for profile editing
             Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
             Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
-            #Button to signout
-            Page += '<form action="/signout" method="post" enctype="multipart/form-data">'
-            Page += '<input class= "button" type="submit" value="Signout"/></form>'
+        #Button to signout
+        Page += '<form action="/signout?username={0}&password={1}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'], cherrypy.session['password'])
+        Page += '<input class= "button" type="submit" value="Signout"/></form>'
         return Page
 		
     #getProfile API
@@ -129,7 +147,7 @@ class MainApp(object):
         #hardcoded UPI
         if ("hshe440" == dataDict['profile_username']):
             print dataDict['sender'] + " has tried to retrieve your profile"
-            userData = self.readUserData(dataDict['profile_username'])
+            userData = functions.readUserData(dataDict['profile_username'])
             outputData = {"lastUpdated": userData[8], "fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "picture": userData[5]}
             returnData = json.dumps(outputData)
             return returnData
@@ -140,15 +158,15 @@ class MainApp(object):
     #Page for the user to edit their profile details
     @cherrypy.expose
     def editProfile(self):
-        self.checkLogged()
-        data = self.readUserData(cherrypy.session['username'])
-        Page = self.readHtml("editProfile")
+        functions.checkLogged()
+        data = functions.readUserData(cherrypy.session['username'])
+        Page = functions.readHtml("editProfile")
         return Page.format(data[1], data[2], data[3], data[4])
 	
 	#Used to update the database with new user info
     @cherrypy.expose
     def writeInfo(self, name=None, position=None, description=None, picture=None, location=None):
-        self.checkLogged()
+        functions.checkLogged()
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
         cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
@@ -157,23 +175,26 @@ class MainApp(object):
         cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
         #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (picture, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET stamp = ? WHERE UPI = ? ", (time.time(), cherrypy.session['username']))
-        img = open('files/hshe440.jpg', 'wb')
-        img = picture.read_into_file(fp_out=None)
-        img.close()
+        print picture.files[0]
+        fileData = picture.read()
+        #encodedData = base64.decodestring(fileData)
+        #img = open('files/hshe440.jpg', 'w')
+        #img = img.write(fileData)
+        #img.close()
         db.commit()
         db.close()
-        raise cherrypy.HTTPRedirect('/profile?user=' + cherrypy.session['username'])
+        raise cherrypy.HTTPRedirect('/profile?user={}'.format(cherrypy.session['username']))
 		
     #Used to save the profile info retrieved from someone else
     @cherrypy.expose
     def saveInfo(self, UPI):
-        self.checkLogged()
+        functions.checkLogged()
         #Get user info
-        data = self.readUserData(UPI)
+        data = functions.readUserData(UPI)
         #Create a dictionary with the input parameters to be encoded
         dict = { "sender": cherrypy.session['username'], "profile_username": UPI }
         jsonData = json.dumps(dict)
-        req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/getProfile', jsonData, {"Content-Type": 'application/json'})
+        req = urllib2.Request('http://{0}:{1}/getProfile'.format(data[6], data[7]), jsonData, {"Content-Type": 'application/json'})
         response = urllib2.urlopen(req)
         #read the response and decode it to a dictionary
         userData = json.loads(response.read())
@@ -186,64 +207,63 @@ class MainApp(object):
         #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (userData['picture'], UPI))
         db.commit()
         db.close()
-        raise cherrypy.HTTPRedirect('/profile?user=' + UPI)
+        raise cherrypy.HTTPRedirect('/profile?user={}'.format(UPI))
         #except:       
         #    raise cherrypy.HTTPRedirect('/getUsers')
 
     #Temp messaging page(Still not sure what to do here)
     @cherrypy.expose
     def messaging(self, destination):
-        self.checkLogged()
-        Page = self.readHtml("messaginghead")
+        functions.checkLogged()
+        #Read the message html
+        Page = functions.readHtml("messaginghead")
+        #Get online user list
+        Page = functions.getUsers(cherrypy.session['username'], Page)
         db = sqlite3.connect("db/Conversation.db")
         cursor = db.cursor()
         #If it is the first time the user uses messaging, create a new table for that user
-        cursor.execute('CREATE TABLE IF NOT EXISTS ' + cherrypy.session['username'] + '(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL)')
-        cursor.execute("SELECT * FROM " + cherrypy.session['username'] + " WHERE UPI='" + destination + "'")
+        cursor.execute('CREATE TABLE IF NOT EXISTS {}(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL, Type TEXT NOT NULL)'.format(cherrypy.session['username']))
+        cursor.execute('SELECT * FROM {} WHERE UPI = ?'.format(cherrypy.session['username']), (destination,))
         all_rows = cursor.fetchall()
         for row in all_rows:
+            #Display your messages in blue
             if (row[1] == cherrypy.session['username']):
                 Page += '<span class="font-color1">'
-                if (row[4] == "notstring"):
-                    Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
-                else:
-                    Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                Page = functions.formatMessage(row[1], row[2], row[3], row[4], Page)
                 Page += '</span>'
+            #Display other person's message in red
             else:
-                if (row[4] == "notstring"):
-                    Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
-                else:
-                    Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(row[3]))), row[1], row[2])
+                Page = functions.formatMessage(row[1], row[2], row[3], row[4], Page)
         db.close()
         Page += "</div>"
         #User input for message, and the send button
         Page += '<form action="/sendMessage"method="post" enctype="multipart/form-data">'
-        Page += 'Message: <input type="text" size="75" name="message"/><button name="destination" value="' + destination +'" class="message-button"/>Send</button></form>'
+        Page += 'Message: <input type="text" size="75" name="message"/><button name="destination" value="{}" class="message-button"/>Send</button></form>'.format(destination)
         Page += '<form action="/sendFile"method="post" enctype="multipart/form-data">'
-        Page += '<input type="file" name="filePath" id="upload"><button name="destination" value="'+ destination +'" class="message-button"/>Send File</button></form>'
+        Page += '<input type="file" name="filePath" id="upload"><button name="destination" value="{}" class="message-button"/>Send File</button></form>'.format(destination)
         return Page
 		
     #Send Message API
     @cherrypy.expose
     def sendMessage(self, message, destination):
-        self.checkLogged()
+        functions.checkLogged()
 		#Check if message is valid
         if (message.strip() == ""):
-            raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
+            raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
         #Read destination user's data
-        data = self.readUserData(destination)
+        data = functions.readUserData(destination)
         #Ping recipient
-        if (urllib2.urlopen('http://' + data[6] + ':' + data[7] + '/ping?sender=' + cherrypy.session['username']).read() == '0'):
+        if (urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username'])).read() == '0'):
             #Create a dictionary with the arguments and encode it to JSON
             stamp = time.time()
             dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
             jsonData = json.dumps(dict)
-            req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveMessage', jsonData, {'Content-Type': 'application/json'})
+            req = urllib2.Request('http://{0}:{1}/receiveMessage'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
             response = urllib2.urlopen(req)
             if (response.read() == '0'):
                 #If message was successfully sent, save the message into the database
-                self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
-                raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
+                functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
+                raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
             else:
                 return response.read() + ",IT DIDN'T WORK"
 					
@@ -253,7 +273,7 @@ class MainApp(object):
     def receiveMessage(self):
         dataDict = cherrypy.request.json
         db = sqlite3.connect('db/Conversation.db')
-        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'], "string")
+        functions.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'], "string")
         return '0'
 	
 	
@@ -261,20 +281,20 @@ class MainApp(object):
     def sendFile(self, destination, filePath, filename=None, stamp=None):
         print filePath
         #How the heck do you get the filepath
-        data = self.readUserData(destination)
-        fileToSend = open('files/potato.jpg', 'rb')
+        data = functions.readUserData(destination)
+        fileToSend = open('files/123.mp3', 'rb')
         fileRead = fileToSend.read()
         encodeFile = base64.encodestring(fileRead)
-        type = mimetypes.guess_type("potato.jpg",strict = True)
+        type = mimetypes.guess_type("123.mp3",strict = True)
         stamp = time.time()
-        dict = {"sender": cherrypy.session['username'], "destination": destination, "file": encodeFile, "filename": "potato.jpg", "content_type": type, "stamp": stamp}
+        dict = {"sender": cherrypy.session['username'], "destination": destination, "file": encodeFile, "filename": "123.mp3", "content_type": type, "stamp": stamp}
         jsonData = json.dumps(dict)
-        req = urllib2.Request('http://' + data[6] + ':' + data[7] + '/receiveFile', jsonData, {'Content-Type': 'application/json'})
+        req = urllib2.Request('http://{0}:{1}/receiveFile'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
         response = urllib2.urlopen(req)
         if (response.read() == '0'):
             #If message was successfully sent, save the message into the database
-            self.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/potato.jpg', stamp, "notstring")
-            raise cherrypy.HTTPRedirect('/messaging?destination=' + destination)
+            functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/123.mp3', stamp, "notstring")
+            raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
         else:
             return response.read() + ",IT DIDN'T WORK"
 		
@@ -287,46 +307,16 @@ class MainApp(object):
         #Need to limit it to 5MB
         #Need to save the sent file directory in the database
         encodedData = base64.decodestring(dataDict['file'])
-        result = open('files/' + dataDict['filename'], 'wb')
+        result = open('files/{}'.format(dataDict['filename']), 'wb')
         result.write(encodedData)
         result.close()
-        self.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], '/static/files/' + dataDict['filename'], dataDict['stamp'], "notstring")
+        functions.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], '/static/files/{}'.format(dataDict['filename']), dataDict['stamp'], "notstring")
         return '0'
 	
     #Ping API
     @cherrypy.expose
     def ping(self, sender):
         return '0'
-    
-    #Gets the list of online users
-    @cherrypy.expose
-    def getUsers(self):
-        self.checkLogged()
-        data = urllib2.urlopen("http://cs302.pythonanywhere.com/getList?username=" + cherrypy.session['username'] + "&password=" + cherrypy.session['password'] + "&enc=0&json=1").read()
-        dict = json.loads(data)
-        Page = self.readHtml("onlineUsers")
-        db = sqlite3.connect("db/Users.db")
-        cursor = db.cursor()
-        for id, info in dict.items():
-            # Check if the user does not exist and create it
-            try:
-                cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP, Port) VALUES(?,?,?,?,?,?,?,?)', (info['username'],"","","","","","",""))
-            except:
-                pass
-            #Update IP Address
-            cursor.execute('UPDATE Profile SET IP = ? WHERE UPI = ?', (info['ip'], info['username']))
-            cursor.execute('UPDATE Profile SET Port = ? WHERE UPI = ?', (info['port'], info['username']))
-            if (info['username'] != cherrypy.session['username']):
-                Page += info['username'] + "<br/>"
-                #Button for viewing an online user's profile
-                Page += '<form action="/saveInfo" method="post" enctype="multipart/form-data">'
-                Page += '<button name="UPI" value="' + info['username'] + '" class="button"/>View Profile</button></form>'
-                #Button for messaging an online user
-                Page += '<form action="/messaging" method="post" enctype="multipart/form-data">'
-                Page += '<button name="destination" value="' + info['username'] + '" class="button"/>Message</button></form>'
-        db.commit()
-        db.close()
-        return Page
 	
 	#Page to display when trying to access particular pages while not logged in
     @cherrypy.expose
@@ -335,58 +325,6 @@ class MainApp(object):
         Page += "Click here to <a href='login'>login</a>."
         return Page
     
-    #Called to make sure you are logged in before being able to do anything which requires authentication e.g. profile editing or messaging
-    def checkLogged(self):
-        try:
-            username = cherrypy.session['username']
-            password = cherrypy.session['password']
-        except KeyError: #No logged in user
-            raise cherrypy.HTTPRedirect('/errorPage')
-        return
-    
-    #Read user data stored in the database
-    def readUserData(self, user):
-        #Opening database and reading user info
-        db = sqlite3.connect("db/Users.db")
-        c = db.cursor()
-        c.execute('SELECT * FROM Profile WHERE UPI="' + user + '"')
-        #User info stored into a tuple, row
-        row = c.fetchone()
-        #Close db
-        db.close()
-        return row
-
-    #Opening Html files to return to the page		
-    def readHtml(self, html):
-        #Open and read html file
-        file = open("html/" + html + ".html", "r")
-        Page = file.read()
-        file.close()
-        return Page
-		
-    #Opening Html files to return to the page		
-    def browseFile(self):
-        #Something for file browsing idk
-        Tk().withdraw()
-        filename = askopenfilename() # show an "Open" dialog box and return the path to the selected file
-        print(filename)
-		
-    #Writing message to the db
-    def saveMessage(self, user, UPI, sender, message, stamp, type):
-        db = sqlite3.connect("db/Conversation.db")
-        cursor = db.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS ' + user + '(UPI TEXT, Sender TEXT, Message TEXT, Stamp TEXT, Type TEXT)')
-        cursor.execute('INSERT INTO ' + user + '(UPI, SENDER, Message, Stamp, Type) VALUES (?,?,?,?,?)', (UPI, sender, message, stamp, type))
-        db.commit()
-        db.close()
-        return '0'
-		
-    def myFunction(self):
-        Tkinter.Tk().withdraw() # Close the root window
-        in_path = tkFileDialog.askopenfilename()
-        print in_path
-
-		
 
           
 def runMainApp():
