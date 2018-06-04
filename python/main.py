@@ -25,6 +25,7 @@ import base64
 import mimetypes
 import time
 import socket
+import logging
 from itertools import cycle, izip
 from threading import Event
 import myThread
@@ -81,35 +82,43 @@ class MainApp(object):
             try:
                 data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
             except:
-			    #hardcoded values for when the site is down/overloaded
+                logging.debug('Not able to retrieve info from the website, http://ip.jsontest.com/')
+                #hardcoded values for when the site is down/overloaded
                 if (location == "1"):
                     data = {'ip':'202.36.244.33'}
                 else:
                     data = {'ip':'121.74.247.219'}
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username={0}&password={1}&location={2}&ip={3}&port={4}".format(username,hashedPW,location,data['ip'],str(listen_port)))
-        string = r.read()
-        if (string == '0, User and IP logged'):
-            cherrypy.session['username'] = username;
-            cherrypy.session['password'] = hashedPW;
-            #creating a thread for periodic reports
-            global thread
-            thread = myThread.MyThread()
-            thread.setURL(username,hashedPW,location,data['ip'],str(listen_port))
-            thread.start()
-            raise cherrypy.HTTPRedirect('/profile?user={}'.format(username))
-        elif (string == '2, Unauthenticated user'):
-            raise cherrypy.HTTPRedirect('/login?ec=2')
-        elif (string == '3, False IP address or location reported'):
-            raise cherrypy.HTTPRedirect('/login?ec=3')
+        try:
+            r = urllib2.urlopen("http://cs302.pythonanywhere.com/report?username={0}&password={1}&location={2}&ip={3}&port={4}".format(username,hashedPW,location,data['ip'],str(listen_port)), timeout=4)
+            string = r.read()
+            if (string == '0, User and IP logged'):
+                cherrypy.session['username'] = username;
+                cherrypy.session['password'] = hashedPW;
+                #creating a thread for periodic reports
+                global thread
+                thread = myThread.MyThread()
+                thread.setURL(username,hashedPW,location,data['ip'],str(listen_port))
+                thread.start()
+                raise cherrypy.HTTPRedirect('/profile?user={}'.format(username))
+            elif (string == '2, Unauthenticated user'):
+                raise cherrypy.HTTPRedirect('/login?ec=2')
+            elif (string == '3, False IP address or location reported'):
+                raise cherrypy.HTTPRedirect('/login?ec=3')
+        except socket.timeout, e:
+            logging.debug('Request to login server timed out')
+            raise cherrypy.HTTPRedirect('/login')
             
 
 	#Manual signout
     @cherrypy.expose
-    def signout(self,username,password):
+    def logoff(self,username,password):
         """Logs the current user out, expires their session"""
         functions.checkLogged()
         thread.stop()
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username={0}&password={1}".format(username, password))
+        try:
+            r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username={0}&password={1}".format(username, password), timeout=4)
+        except socket.timeout, e:
+            logging.debug('Request to login server timed out')
         cherrypy.lib.sessions.expire()
         raise cherrypy.HTTPRedirect('/')
 	
@@ -118,13 +127,15 @@ class MainApp(object):
     def profile(self, user):
         #profile page
         functions.checkLogged()
-        data = functions.readUserData(user)
         #Open and read html file
         Page = functions.readHtml("profile")
         #Get online user list
         Page = functions.getUsers(cherrypy.session['username'], Page)
+        data = functions.readUserData(user)
         #Displays user info
-        Page += "<img src='/static/files/potato.jpg' alt='potato' width='400' height='400'><br/>"
+        #Page += '<object data={} type="image/png">'.format(data[5])
+        #Page += '<img src="/static/displaypics/anon.png" /></object>'
+        Page += '<img src={} width="400" height="400"><br/>'.format(data[5])
         Page += "<b>Name: {}</b><br/>".format(data[1])
         Page += "<b>Position: {}</b><br/>".format(data[2])
         Page += "<b>Description: {}</b><br/>".format(data[3])
@@ -135,7 +146,7 @@ class MainApp(object):
             Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
             Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
         #Button to signout
-        Page += '<form action="/signout?username={0}&password={1}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'], cherrypy.session['password'])
+        Page += '<form action="/logoff?username={0}&password={1}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'], cherrypy.session['password'])
         Page += '<input class= "button" type="submit" value="Signout"/></form>'
         return Page
 		
@@ -145,14 +156,11 @@ class MainApp(object):
     def getProfile(self):
         dataDict = cherrypy.request.json
         #Gets the user profile of the person logged in
-        if (cherrypy.session['username'] == dataDict['profile_username']):
-            print dataDict['sender'] + " has tried to retrieve your profile"
-            userData = functions.readUserData(dataDict['profile_username'])
-            outputData = {"fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "lastUpdated": userData[8]}
-            returnData = json.dumps(outputData)
-            return returnData
-        else:
-            return 'Failed'
+        print dataDict['sender'] + " has tried to retrieve your profile"
+        userData = functions.readUserData(dataDict['profile_username'])
+        outputData = {"fullname": userData[1], "position": userData[2], "description": userData[3], "location": userData[4], "picture": "{0}:{1}{2}".format(userData[6], userData[7], userData[5]), "lastUpdated": userData[8]}
+        returnData = json.dumps(outputData)
+        return returnData
         
 
     #Page for the user to edit their profile details
@@ -167,20 +175,20 @@ class MainApp(object):
     @cherrypy.expose
     def writeInfo(self, name=None, position=None, description=None, picture=None, location=None):
         functions.checkLogged()
+        #Get the file type and save a copy of the file to the working directory
+        ext = mimetypes.guess_extension(str(picture.type))
+        currentDir = os.getcwd()
+        fName = currentDir + "/displaypics/" + cherrypy.session['username'] + ext
+        functions.saveFile(picture, fName)
+		#Update your profile details
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
         cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (position, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (description, cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
-        #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (picture, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("/static/displaypics/{0}{1}".format(cherrypy.session['username'],ext), cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET stamp = ? WHERE UPI = ? ", (time.time(), cherrypy.session['username']))
-        print picture.files[0]
-        fileData = picture.read()
-        #encodedData = base64.decodestring(fileData)
-        #img = open('files/hshe440.jpg', 'w')
-        #img = img.write(fileData)
-        #img.close()
         db.commit()
         db.close()
         raise cherrypy.HTTPRedirect('/profile?user={}'.format(cherrypy.session['username']))
@@ -194,22 +202,34 @@ class MainApp(object):
         #Create a dictionary with the input parameters to be encoded
         dict = { "sender": cherrypy.session['username'], "profile_username": UPI }
         jsonData = json.dumps(dict)
-        req = urllib2.Request('http://{0}:{1}/getProfile'.format(data[6], data[7]), jsonData, {"Content-Type": 'application/json'})
-        response = urllib2.urlopen(req)
-        #read the response and decode it to a dictionary
-        userData = json.loads(response.read())
-        db = sqlite3.connect("db/Users.db")
-        cursor = db.cursor()
-        cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
-        cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
-        cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
-        cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
-        #cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (userData['picture'], UPI))
-        db.commit()
-        db.close()
-        raise cherrypy.HTTPRedirect('/profile?user={}'.format(UPI))
-        #except:       
-        #    raise cherrypy.HTTPRedirect('/getUsers')
+        try:
+            req = urllib2.Request('http://{0}:{1}/getProfile'.format(data[6], data[7]), jsonData, {"Content-Type": 'application/json'})
+            response = urllib2.urlopen(req, timeout=4)
+            #read the response and decode it to a dictionary
+            userData = json.loads(response.read())
+            db = sqlite3.connect("db/Users.db")
+            cursor = db.cursor()
+            #Save the picture to the working directory
+            fileName = userData['picture'].split('/')
+            ext = mimetypes.guess_extension(fileName[-1])
+            fName = "/static/displaypics/{0}{1}".format(UPI, ext)
+            f = open(fName,'wb')
+            f.write(urllib2.urlopen(userData['picture']).read())
+            f.close()
+            #Update user info
+            cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
+            cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
+            cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
+            cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
+            cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", (fName, UPI))
+            db.commit()
+            db.close()
+            raise cherrypy.HTTPRedirect('/profile?user={}'.format(UPI))
+        except socket.timeout, e:
+            logging.debug('Request to get profile failed')
+        except socket.timeout, e:
+            logging.debug('Request to get profile timed out')
+        raise cherrypy.HTTPRedirect('/getUsers')
 
     #Temp messaging page(Still not sure what to do here)
     @cherrypy.expose
@@ -240,7 +260,8 @@ class MainApp(object):
         Page += '<form action="/sendMessage"method="post" enctype="multipart/form-data">'
         Page += 'Message: <input type="text" class="message-input" name="message"/><button name="destination" value="{}" class="message-button"/>Send</button></form>'.format(destination)
         Page += '<form action="/sendFile"method="post" enctype="multipart/form-data">'
-        Page += '<input type="file" name="filePath" id="upload"><button name="destination" value="{}" class="message-button"/>Send File</button></form>'.format(destination)
+        Page += '<input type="file" name="fData" id="upload"><button name="destination" value="{}" class="message-button"/>Send File</button></form>'.format(destination)
+        #Button to return to your profile
         Page += '<form action="/profile?user={}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'])
         Page += '<input type="submit" value="Back to Profile" class="button button-pos"/></form>'
         return Page
@@ -254,20 +275,24 @@ class MainApp(object):
             raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
         #Read destination user's data
         data = functions.readUserData(destination)
+        try:
         #Ping recipient
-        if (urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username'])).read() == '0'):
-            #Create a dictionary with the arguments and encode it to JSON
-            stamp = time.time()
-            dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
-            jsonData = json.dumps(dict)
-            req = urllib2.Request('http://{0}:{1}/receiveMessage'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
-            response = urllib2.urlopen(req)
-            if (response.read() == '0'):
-                #If message was successfully sent, save the message into the database
-                functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
-                raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
-            else:
-                return response.read() + ",IT DIDN'T WORK"
+            if (urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=4).read() == '0'):
+                #Create a dictionary with the arguments and encode it to JSON
+                stamp = time.time()
+                dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
+                jsonData = json.dumps(dict)
+                req = urllib2.Request('http://{0}:{1}/receiveMessage'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
+                response = urllib2.urlopen(req)
+                if (response.read() == '0'):
+                    #If message was successfully sent, save the message into the database
+                    functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
+                    raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
+        except socket.timeout, e:
+            logging.debug('Request to recipient timed out')
+        except urllib2.URLError, e:
+            logging.debug('Request to call receiveMessage failed')
+        raise cherrypy.HTTPRedirect('/errorPage?ec=2')
 					
     #Recieve Message API
     @cherrypy.expose
@@ -280,22 +305,30 @@ class MainApp(object):
 	
 	
     @cherrypy.expose
-    def sendFile(self, destination, filePath, filename=None, stamp=None):
-        print filePath
-        #How the heck do you get the filepath
+    def sendFile(self, destination, fData, stamp=None):
+        #Read User Data to get ip and port
         data = functions.readUserData(destination)
-        fileToSend = open('files/123.mp3', 'rb')
-        fileRead = fileToSend.read()
-        encodeFile = base64.encodestring(fileRead)
-        type = mimetypes.guess_type("123.mp3",strict = True)
+        #Time
         stamp = time.time()
-        dict = {"sender": cherrypy.session['username'], "destination": destination, "file": encodeFile, "filename": "123.mp3", "content_type": type, "stamp": stamp}
+        #Get the file type and save a copy of the file to the working directory
+        ext = mimetypes.guess_extension(str(fData.type))
+        currentDir = os.getcwd()
+        fName = currentDir + "/files/" + str(stamp) + ext
+        if fData.file:
+            outfile = file(fName, 'wb')
+            outfile.write(fData.file.read())
+            outfile.close()
+		#Read the file and encode it to send
+        fileToSend = open(fName, 'rb')
+        encodeFile = base64.encodestring(fileToSend.read())
+        fileToSend.close()
+        dict = {"sender": cherrypy.session['username'], "destination": destination, "file": encodeFile, "filename": "{0}{1}".format(str(stamp), ext), "content_type": str(fData.type), "stamp": stamp}
         jsonData = json.dumps(dict)
         req = urllib2.Request('http://{0}:{1}/receiveFile'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
         response = urllib2.urlopen(req)
         if (response.read() == '0'):
             #If message was successfully sent, save the message into the database
-            functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/123.mp3', stamp, "notstring")
+            functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/{0}{1}'.format(str(stamp), ext), stamp, "notstring")
             raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
         else:
             return response.read() + ",IT DIDN'T WORK"
@@ -322,9 +355,14 @@ class MainApp(object):
 	
 	#Page to display when trying to access particular pages while not logged in
     @cherrypy.expose
-    def errorPage(self):
-        Page = "You must login first.<br/>"
-        Page += "Click here to <a href='login'>login</a>."
+    def errorPage(self, ec=None):
+        Page = ""
+        if (ec == '1'):	
+            Page += "You must login first.<br/>"
+            Page += "Click here to <a href='login'>login</a>."
+        elif (ec == '2'):
+            Page += "Message failed to send.<br/>"
+            Page += "Click here to <a href='profile?user={}'>return to you profile</a>.".format(cherrypy.session['username'])
         return Page
     
 
@@ -339,6 +377,7 @@ def runMainApp():
 				}
     }
     cherrypy.tree.mount(MainApp(), "/", conf)
+    logging.basicConfig(filename='errorLog.log',level=logging.DEBUG)
 
     # Tell Cherrypy to listen for connections on the configured address and port.
     cherrypy.config.update({'server.socket_host': listen_ip,

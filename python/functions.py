@@ -1,13 +1,10 @@
-import os
 import cherrypy
 import json
 import urllib2
 import sqlite3
-import base64
 import mimetypes
 import time
 from itertools import cycle, izip
-from threading import Event
 from hashlib import sha256
 import atexit
 	
@@ -26,7 +23,7 @@ def getUsers(userLogged, Page):
     for id, info in dict.items():
         # Check if the user does not exist and create it
         try:
-            cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP, Port) VALUES(?,?,?,?,?,?,?,?)', (info['username'],"","","","","","",""))
+            cursor.execute('INSERT INTO Profile(UPI, Name, Position, Description, Location, Picture, IP, Port, Stamp) VALUES(?,?,?,?,?,?,?,?,?)', (info['username'],"","","","","/static/displaypics/anon.png","","",time.time()))
         except:
             pass
         onlineUsers = onlineUsers + (info['username'],)
@@ -92,7 +89,7 @@ def checkLogged():
         username = cherrypy.session['username']
         password = cherrypy.session['password']
     except KeyError: #No logged in user
-        raise cherrypy.HTTPRedirect('/errorPage')
+        raise cherrypy.HTTPRedirect('/errorPage?ec=1')
     return
 		
 #Adds the stored messages to the page
@@ -100,21 +97,24 @@ def formatMessage(name, message, stamp, mType, Page):
     if (mType == "notstring"):
         filePath = message.split("/")
         type = mimetypes.guess_type(filePath[3],strict = True)
-        if (type[0] == 'image/jpeg' or type[0] == 'image/png'):
-            Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
-        elif (type[0] == 'video/mp4'):
+        if (type[0] == 'video/mp4'):
             Page += '{0}<br/>{1} :<br/> <video width="200" height="200" controls><source src="{2}" type="{3}"></video><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         elif (type[0] == 'audio/mpeg'):
             Page += '{0}<br/>{1} :<br/> <audio controls><source src="{2}" type="{3}"></audio><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         else:
-            Page += '{0}<br/>{1} :<br/> <video width="320" height="240" controls><source src="{2}" type="{3}"></video><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
+            Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
     else:
         Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
     return Page
 		
-#enctype = 1
-def XOREncryption(text, key="\b10010110"):
-    return ''.join(chr(ord(x) ^ ord(y)) for (x,y) in izip(text, cycle(key)))
+#Saves a file retrieved locally to the working directory
+def saveFile(fData, fName):
+    #Get the file type and save a copy of the file to the working directory
+    ext = mimetypes.guess_extension(str(fData.type))
+    if fData.file:
+        outfile = file(fName, 'wb')
+        outfile.write(fData.file.read())
+        outfile.close()
 	
 #Called on exit. If a user is logged in, it will log out the current user
 def exit_handler():
