@@ -36,7 +36,7 @@ def getUsers(userLogged, Page):
             Page += '<form action="/saveInfo" method="post" enctype="multipart/form-data">'
             Page += '<button name="UPI" value="{}" class="message-button"/>View Profile</button></form>'.format(info['username'])
             #Button for messaging an online user
-            Page += '<form action="/messaging?destination={}" method="post" enctype="multipart/form-data">'.format(info['username'])
+            Page += '<form action="/messaging?destination={0}" method="post" enctype="multipart/form-data">'.format(info['username'])
             Page += '<input class= "message-button" type="submit" value="Message"></form>'
     #Display offline users
     cursor.execute("SELECT UPI FROM Profile")
@@ -46,8 +46,11 @@ def getUsers(userLogged, Page):
         if (name[0] not in onlineUsers):
             Page += '{}<br/>'.format(name[0])
 			#Button for viewing an offline user's profile
-            Page += '<form action="/saveInfo" method="post" enctype="multipart/form-data">'
-            Page += '<button name="UPI" value="{}" class="message-button"/>View Profile</button></form>'.format(name[0])
+            Page += '<form action="/profile" method="post" enctype="multipart/form-data">'
+            Page += '<button name="user" value="{}" class="message-button"/>View Profile</button></form>'.format(name[0])
+            #Button for viewing a conversation with an offline user. Note: Offline messaging is not supported
+            Page += '<form action="/messaging?destination={0}" method="post" enctype="multipart/form-data">'.format(info['username'])
+            Page += '<input class= "message-button" type="submit" value="Message"></form>'
     Page += '</div>'
     db.commit()
     db.close()
@@ -97,12 +100,15 @@ def formatMessage(name, message, stamp, mType, Page):
     if (mType == "notstring"):
         filePath = message.split("/")
         type = mimetypes.guess_type(filePath[3],strict = True)
-        if (type[0] == 'video/mp4'):
+        if (type[0] == 'image/jpeg' or type[0] == 'image/png' or type[0] == 'image/gif'):
+            Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
+        elif (type[0] == 'video/mp4'):
             Page += '{0}<br/>{1} :<br/> <video width="200" height="200" controls><source src="{2}" type="{3}"></video><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         elif (type[0] == 'audio/mpeg'):
             Page += '{0}<br/>{1} :<br/> <audio controls><source src="{2}" type="{3}"></audio><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         else:
-            Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
+            fName = message.split('/')
+            Page += '{0}<br/>{1} :<br/> The file named "{2}" is not supported. Please check your local files to view it.<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, fName[-1])
     else:
         Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
     return Page
@@ -115,7 +121,7 @@ def saveFile(fData, fName):
         outfile = file(fName, 'wb')
         outfile.write(fData.file.read())
         outfile.close()
-	
+		
 #Called on exit. If a user is logged in, it will log out the current user
 def exit_handler():
     try:

@@ -10,7 +10,6 @@ class MyThread(Thread):
         while not self._stop_event.wait(30):
             r = urllib2.urlopen(URL)
             print (r.read())
-            # call a function
 			
     def stop(self):
         self._stop_event.set()
