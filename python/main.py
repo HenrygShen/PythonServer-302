@@ -81,6 +81,7 @@ class MainApp(object):
             except:
                 logging.debug('Not able to retrieve info from the website, http://ip.jsontest.com/')
                 #hardcoded values for when the site is down/overloaded
+                print "location = " + location
                 if (location == "1"):
                     data = {'ip':'202.36.244.33'}
                 else:
@@ -117,6 +118,8 @@ class MainApp(object):
             r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username={0}&password={1}".format(username, password), timeout=4)
         except socket.timeout, e:
             logging.debug('Request to login server timed out')
+        except urllib2.URLError, e:
+            logging.debug('Unable to contact the login server')
         cherrypy.lib.sessions.expire()
         raise cherrypy.HTTPRedirect('/')
 	
@@ -214,10 +217,7 @@ class MainApp(object):
                 cursor = db.cursor()
                 #Save the picture to the working directory
                 currentDir = os.getcwd()
-                fileName = userData['picture'].split('/')
-                type = mimetypes.guess_type(fileName[-1],strict=True)
-                ext = mimetypes.guess_extension(type[0])
-                fName = "{0}/displaypics/{1}{2}".format(currentDir, UPI, ext)
+                fName = "{0}/displaypics/{1}.jpg".format(currentDir, UPI)
                 f = open(fName,'wb')
                 f.write(urllib2.urlopen(userData['picture']).read())
                 f.close()
@@ -226,7 +226,7 @@ class MainApp(object):
                 cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
                 cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
                 cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
-                cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/{0}{1}".format(UPI, ext), UPI))
+                cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/{0}.jpg".format(UPI), UPI))
                 db.commit()
                 db.close()
                 raise cherrypy.HTTPRedirect('/profile?user={}'.format(UPI))
@@ -297,7 +297,7 @@ class MainApp(object):
                 if (response.read() == '0'):
                     #If message was successfully sent, save the message into the database
                     functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], message, stamp, "string")
-                    raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
+                raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
             #Exceptions for recieveMessage
             except socket.timeout, e:
                 logging.debug('Request to recipient timed out(sendMessage)')
@@ -326,11 +326,13 @@ class MainApp(object):
         data = functions.readUserData(destination)
         try:
             #Ping recipient
-            urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=10)
+            urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']))
             #Time
             stamp = time.time()
             #Get the file type and save a copy of the file to the working directory
             ext = mimetypes.guess_extension(str(fData.type))
+            if (ext == None):
+                ext = ".mp3"
             currentDir = os.getcwd()
             fName = currentDir + "/files/" + str(stamp) + ext
             if fData.file:
@@ -345,8 +347,8 @@ class MainApp(object):
             jsonData = json.dumps(dict)
             try:
                 req = urllib2.Request('http://{0}:{1}/receiveFile'.format(data[6], data[7]), jsonData, {'Content-Type': 'application/json'})
-                response = urllib2.urlopen(req, timeout=4)
-                if (response.read() == '0'):
+                response = urllib2.urlopen(req)
+                if (response.read() == "0"):
                     #If message was successfully sent, save the message into the database
                     functions.saveMessage(cherrypy.session['username'], destination, cherrypy.session['username'], '/static/files/{0}{1}'.format(str(stamp), ext), stamp, "notstring")
                     raise cherrypy.HTTPRedirect('/messaging?destination={}'.format(destination))
@@ -411,7 +413,7 @@ def runMainApp():
 				}
     }
     cherrypy.tree.mount(MainApp(), "/", conf)
-    logging.basicConfig(filename='errorLog.log',level=logging.DEBUG)
+    logging.basicConfig(filename='Log.log',level=logging.DEBUG)
 
     # Tell Cherrypy to listen for connections on the configured address and port.
     cherrypy.config.update({'server.socket_host': listen_ip,
