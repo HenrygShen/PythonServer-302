@@ -291,3 +291,132 @@ INFO:cherrypy.error:[04/Jun/2018:23:22:41] ENGINE Bus STOPPED
 INFO:cherrypy.error:[04/Jun/2018:23:22:41] ENGINE Bus EXITING
 INFO:cherrypy.error:[04/Jun/2018:23:22:41] ENGINE Bus EXITED
 INFO:cherrypy.error:[04/Jun/2018:23:22:41] ENGINE Waiting for child threads to terminate...
+INFO:cherrypy.error:[05/Jun/2018:13:07:55] ENGINE Bus STARTING
+INFO:cherrypy.error:[05/Jun/2018:13:07:55] ENGINE Started monitor thread 'Autoreloader'.
+INFO:cherrypy.error:[05/Jun/2018:13:07:55] ENGINE Started monitor thread '_TimeoutMonitor'.
+INFO:cherrypy.error:[05/Jun/2018:13:07:55] ENGINE Serving on http://0.0.0.0:10010
+INFO:cherrypy.error:[05/Jun/2018:13:07:55] ENGINE Bus STARTED
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:03] "GET / HTTP/1.1" 200 493 "" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:03] "GET /static/css/style.css HTTP/1.1" 200 1214 "http://localhost:10010/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:04] "GET /favicon.ico HTTP/1.1" 200 1406 "" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:05] "POST /login HTTP/1.1" 200 967 "http://localhost:10010/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+DEBUG:root:Not able to retrieve info from the website, http://ip.jsontest.com/
+INFO:cherrypy.error:[05/Jun/2018:13:08:15] ENGINE Started monitor thread 'Session cleanup'.
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:15] "POST /signin HTTP/1.1" 303 132 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:16] "GET /profile?user=hshe440 HTTP/1.1" 200 459063 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:16] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 200 18786 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+DEBUG:root:Request to call ping failed
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:40] "POST /saveInfo HTTP/1.1" 303 148 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:40] "GET /errorPage?ec=3&user=kli283 HTTP/1.1" 200 103 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:45] "POST /messaging?destination=kli283 HTTP/1.1" 200 463763 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:45] "GET /static/css/style.css HTTP/1.1" 200 1214 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:08:45] "GET /static/js/script.js HTTP/1.1" 200 892 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+DEBUG:root:Request to call ping failed
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:09:10] "POST /sendMessage HTTP/1.1" 303 148 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139889766061136:127.0.0.1 - - [05/Jun/2018:13:09:10] "GET /errorPage?ec=2&user=kli283 HTTP/1.1" 200 112 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Restarting because /afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/main.py changed.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Stopped thread 'Autoreloader'.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus STOPPING
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE HTTP Server cherrypy._cpwsgi_server.CPWSGIServer(('0.0.0.0', 10010)) shut down
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Stopped thread '_TimeoutMonitor'.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Stopped thread 'Session cleanup'.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus STOPPED
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus EXITING
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus EXITED
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Waiting for child threads to terminate...
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Re-spawning main.py
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus STARTING
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Started monitor thread 'Autoreloader'.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Started monitor thread '_TimeoutMonitor'.
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Serving on http://0.0.0.0:10010
+INFO:cherrypy.error:[05/Jun/2018:13:12:43] ENGINE Bus STARTED
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:12:59] "GET / HTTP/1.1" 200 493 "" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:12:59] "GET /static/css/style.css HTTP/1.1" 200 1214 "http://localhost:10010/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:00] "GET / HTTP/1.1" 200 493 "" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:00] "GET /static/css/style.css HTTP/1.1" 304 - "http://localhost:10010/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:02] "POST /login HTTP/1.1" 200 967 "http://localhost:10010/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.error:[05/Jun/2018:13:13:10] ENGINE Started monitor thread 'Session cleanup'.
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:10] "POST /signin HTTP/1.1" 303 132 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:11] "GET /profile?user=hshe440 HTTP/1.1" 200 454173 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:127.0.0.1 - - [05/Jun/2018:13:13:11] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 200 18786 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.139919783575760:10.103.137.43 - - [05/Jun/2018:13:14:23] "POST /getProfile HTTP/1.1" 200 225 "" "Python-urllib/2.7"
+INFO:cherrypy.access.139919783575760:10.103.137.43 - - [05/Jun/2018:13:14:23] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 200 18786 "" "Python-urllib/2.7"
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Restarting because /afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/main.py changed.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Stopped thread 'Autoreloader'.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus STOPPING
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE HTTP Server cherrypy._cpwsgi_server.CPWSGIServer(('0.0.0.0', 10010)) shut down
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Stopped thread 'Session cleanup'.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Stopped thread '_TimeoutMonitor'.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus STOPPED
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus EXITING
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus EXITED
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Waiting for child threads to terminate...
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Re-spawning main.py
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus STARTING
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Started monitor thread 'Autoreloader'.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Started monitor thread '_TimeoutMonitor'.
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Serving on http://0.0.0.0:10010
+INFO:cherrypy.error:[05/Jun/2018:13:14:42] ENGINE Bus STARTED
+INFO:cherrypy.error:[05/Jun/2018:13:14:45] ENGINE Started monitor thread 'Session cleanup'.
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:45] "GET /profile?user=hshe440 HTTP/1.1" 303 120 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:45] "GET /errorPage?ec=1 HTTP/1.1" 200 66 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:46] "GET /login HTTP/1.1" 200 967 "http://localhost:10010/errorPage?ec=1" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:46] "GET /static/css/style.css HTTP/1.1" 304 - "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:47] "POST /signin HTTP/1.1" 303 132 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:48] "GET /profile?user=hshe440 HTTP/1.1" 200 439155 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:14:48] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 304 - "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:21] "GET /profile?user=hshe440 HTTP/1.1" 200 439177 "http://localhost:10010/login" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:21] "GET /static/css/style.css HTTP/1.1" 304 - "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:21] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 304 - "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:31] "POST /messaging?destination=kli283 HTTP/1.1" 200 439313 "http://localhost:10010/profile?user=hshe440" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:31] "GET /static/js/script.js HTTP/1.1" 200 892 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+DEBUG:root:Request to call receiveMessage failed
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:48] "POST /sendMessage HTTP/1.1" 303 148 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:15:48] "GET /errorPage?ec=2&user=kli283 HTTP/1.1" 200 112 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:39] "GET /messaging?destination=kli283 HTTP/1.1" 200 487561 "http://localhost:10010/errorPage?ec=2&user=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:39] "GET /static/css/style.css HTTP/1.1" 200 1214 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:39] "GET /static/js/script.js HTTP/1.1" 200 892 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:52] "GET /messaging?destination=kli283 HTTP/1.1" 200 446485 "http://localhost:10010/errorPage?ec=2&user=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:52] "GET /static/css/style.css HTTP/1.1" 304 - "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:17:52] "GET /static/js/script.js HTTP/1.1" 200 892 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+DEBUG:root:Request to get profile failed
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:03] "POST /saveInfo HTTP/1.1" 303 150 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:03] "GET /errorPage?ec=3&user=pjoe652 HTTP/1.1" 200 104 "http://localhost:10010/messaging?destination=kli283" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:06] "GET /profile?user=pjoe652 HTTP/1.1" 200 440114 "http://localhost:10010/errorPage?ec=3&user=pjoe652" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:06] "GET /static/displaypics/anon.png HTTP/1.1" 200 8027 "http://localhost:10010/profile?user=pjoe652" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:10] "POST /profile HTTP/1.1" 200 440155 "http://localhost:10010/profile?user=pjoe652" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:10] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 200 18786 "http://localhost:10010/profile" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:30] "POST /messaging?destination=rpor545 HTTP/1.1" 200 457166 "http://localhost:10010/profile" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:18:30] "GET /static/js/script.js HTTP/1.1" 200 892 "http://localhost:10010/messaging?destination=rpor545" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:172.23.136.185 - - [05/Jun/2018:13:19:15] "GET /ping?sender=kli283 HTTP/1.1" 200 1 "" "Python-urllib/2.7"
+INFO:cherrypy.access.140453117726928:172.23.136.185 - - [05/Jun/2018:13:19:15] "POST /receiveMessage HTTP/1.1" 200 1 "" "Python-urllib/2.7"
+ERROR:cherrypy.error.140453117726928:[05/Jun/2018:13:19:41] HTTP Traceback (most recent call last):
+  File "/afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/cherrypy/_cprequest.py", line 670, in respond
+    response.body = self.handler()
+  File "/afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/cherrypy/lib/encoding.py", line 217, in __call__
+    self.body = self.oldhandler(*args, **kwargs)
+  File "/afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/cherrypy/_cpdispatch.py", line 61, in __call__
+    return self.callable(*self.args, **self.kwargs)
+  File "main.py", line 267, in messaging
+    Page = functions.formatMessage(row[1], row[2], row[3], row[4], Page)
+  File "/afs/ec.auckland.ac.nz/users/h/s/hshe440/unixhome/Documents/uoa-cs302-2018-p2-hshe440/python/functions.py", line 113, in formatMessage
+    Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-17: ordinal not in range(128)
+
+INFO:cherrypy.error.140453117726928:[05/Jun/2018:13:19:41] HTTP 
+Request Headers:
+  Content-Length: 61
+  REFERER: http://localhost:10010/profile
+  HOST: localhost:10010
+  UPGRADE-INSECURE-REQUESTS: 1
+  Remote-Addr: 127.0.0.1
+  ACCEPT: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  USER-AGENT: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0
+  CONNECTION: keep-alive
+  COOKIE: session_id=75d17896f7c9a6a280a634d780daa4a53121f498
+  ACCEPT-LANGUAGE: en-GB,en;q=0.5
+  Content-Type: multipart/form-data; boundary=---------------------------1984449001077920752517011800
+  ACCEPT-ENCODING: gzip, deflate
+INFO:cherrypy.access.140453117726928:127.0.0.1 - - [05/Jun/2018:13:19:41] "POST /messaging?destination=kli283 HTTP/1.1" 500 1935 "http://localhost:10010/profile" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0"
+INFO:cherrypy.access.140453117726928:10.103.137.43 - - [05/Jun/2018:13:28:46] "POST /getProfile HTTP/1.1" 200 225 "" "Python-urllib/2.7"
+INFO:cherrypy.access.140453117726928:10.103.137.43 - - [05/Jun/2018:13:28:46] "GET /static/displaypics/hshe440.jpe HTTP/1.1" 200 18786 "" "Python-urllib/2.7"

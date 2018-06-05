@@ -288,7 +288,7 @@ class MainApp(object):
         data = functions.readUserData(destination)
         try:
             #Ping recipient
-            urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=10)
+            #urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=10)
             #Create a dictionary with the arguments and encode it to JSON
             stamp = time.time()
             dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
