@@ -132,10 +132,10 @@ class MainApp(object):
         data = functions.readUserData(user)
         #Displays user info
         Page += '<img src={} width="400" height="400"><br/>'.format(data[5])
-        Page += "<b>Name: {}</b><br/>".format(data[1])
-        Page += "<b>Position: {}</b><br/>".format(data[2])
-        Page += "<b>Description: {}</b><br/>".format(data[3])
-        Page += "<b>Location: {}</b><br/>".format(data[4])
+        Page += u"<b>Name: {}</b><br/>".format(data[1])
+        Page += u"<b>Position: {}</b><br/>".format(data[2])
+        Page += u"<b>Description: {}</b><br/>".format(data[3])
+        Page += u"<b>Location: {}</b><br/>".format(data[4])
         if (cherrypy.session['username'] == user):
             #Button for profile editing
             Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
@@ -247,7 +247,7 @@ class MainApp(object):
     def messaging(self, destination):
         functions.checkLogged()
         #Read the message html
-        Page = functions.readHtml("messaginghead")
+        Page = functions.readHtml("messaginghead").format(cherrypy.session['username'])
         #Get online user list
         Page = functions.getUsers(cherrypy.session['username'], Page)
         db = sqlite3.connect("db/Conversation.db")
@@ -256,6 +256,7 @@ class MainApp(object):
         cursor.execute('CREATE TABLE IF NOT EXISTS {}(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL, Type TEXT NOT NULL)'.format(cherrypy.session['username']))
         cursor.execute('SELECT * FROM {} WHERE UPI = ?'.format(cherrypy.session['username']), (destination,))
         all_rows = cursor.fetchall()
+        Page += '<div id="message-box" class="message-box">'
         for row in all_rows:
             #Display your messages in blue
             if (row[1] == cherrypy.session['username']):
@@ -269,12 +270,9 @@ class MainApp(object):
         Page += "</div>"
         #User input for message, and the send button
         Page += '<form action="/sendMessage"method="post" enctype="multipart/form-data">'
-        Page += 'Message: <input type="text" name="message" required class="message-input"/><button name="destination" value="{0}" class="message-button"/>Send</button></form>'.format(destination)
+        Page += 'Message: <input type="text" id="input-box" name="message" required class="message-input"/><button name="destination" value="{0}" class="message-button"/>Send</button></form>'.format(destination)
         Page += '<form action="/sendFile"method="post" enctype="multipart/form-data">'
         Page += '<input type="file" name="fData" id="upload" required><button name="destination" value="{0}" class="message-button"/>Send File</button></form>'.format(destination)
-        #Button to return to your profile
-        Page += '<form action="/profile?user={}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'])
-        Page += '<input type="submit" value="Back to Profile" class="button button-pos"/></form>'
         return Page
 		
     #Send Message API. Uses the recieveMessage API to communicate to other nodes

@@ -1,4 +1,5 @@
 import cherrypy
+import sys
 import json
 import urllib2
 import sqlite3
@@ -31,7 +32,7 @@ def getUsers(userLogged, Page):
         cursor.execute('UPDATE Profile SET IP = ? WHERE UPI = ?', (info['ip'], info['username']))
         cursor.execute('UPDATE Profile SET Port = ? WHERE UPI = ?', (info['port'], info['username']))
         if (info['username'] != userLogged):
-            Page += info['username'] + "<br/>"
+            Page += u'{}<br/>'.format(info['username'])
             #Button for viewing an online user's profile
             Page += '<form action="/saveInfo" method="post" enctype="multipart/form-data">'
             Page += '<button name="UPI" value="{}" class="message-button"/>View Profile</button></form>'.format(info['username'])
@@ -49,7 +50,7 @@ def getUsers(userLogged, Page):
             Page += '<form action="/profile" method="post" enctype="multipart/form-data">'
             Page += '<button name="user" value="{}" class="message-button"/>View Profile</button></form>'.format(name[0])
             #Button for viewing a conversation with an offline user. Note: Offline messaging is not supported
-            Page += '<form action="/messaging?destination={0}" method="post" enctype="multipart/form-data">'.format(info['username'])
+            Page += '<form action="/messaging?destination={0}" method="post" enctype="multipart/form-data">'.format(name[0])
             Page += '<input class= "message-button" type="submit" value="Message"></form>'
     Page += '</div>'
     db.commit()
@@ -97,6 +98,7 @@ def checkLogged():
 		
 #Adds the stored messages to the page
 def formatMessage(name, message, stamp, mType, Page):
+    messageStamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp)))
     if (mType == "notstring"):
         filePath = message.split("/")
         type = mimetypes.guess_type(filePath[3],strict = True)
@@ -110,7 +112,7 @@ def formatMessage(name, message, stamp, mType, Page):
             fName = message.split('/')
             Page += '{0}<br/>{1} :<br/> The file named "{2}" is not supported. Please check your local files to view it.<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, fName[-1])
     else:
-        Page += '{0}<br/>{1} : {2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
+        Page += u'{0}<br/>{1} :{2}<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
     return Page
 		
 #Saves a file retrieved locally to the working directory
@@ -130,3 +132,5 @@ def exit_handler():
         pass
 
 atexit.register(exit_handler)
+reload(sys)  
+sys.setdefaultencoding('utf8')

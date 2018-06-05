@@ -52,20 +52,32 @@
 }.button:hover {opacity: 1}
 
 .message-box {
-  height:75%;
-  width:85%;
-  border:3px solid #ff8080;
-  overflow:auto;
-  word-wrap: break-word;
+	left:0;
+	width:60%;
+	height:66%;
+	border:3px solid #ff8080;
+	overflow:auto;
+	word-wrap: break-word;
 }
 
 .online-users {
-	height:90%;
 	border:3px solid #ff8080;
 	overflow:auto;
 	position:absolute;
+	top:88;
 	right:7;
-	width:10%
+	bottom:0;
+	width:15%
+}
+
+.emoji-picker {
+	border:3px solid #ff8080;
+	overflow:auto;
+	position:absolute;
+	top:88;
+	right:250;
+	height:64.5%;
+	width:15%
 }
 
 .button-pos{
@@ -76,5 +88,5 @@
 
 .message-input{
 	border:1px solid #ff8080;
-	width:77.6%;
+	width:48%;
 }

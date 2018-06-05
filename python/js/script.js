@@ -21,6 +21,10 @@ $(document.body).bind("mousemove keypress", function(e) {
 	time = new Date().getTime();
 });
 
+function insertEmoji(emoji){
+	document.getElementById("input-box").value += emoji;
+}
+
 function refresh() {
 	if(new Date().getTime() - time >= 10000) 
 		window.location.reload(true);
