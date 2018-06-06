@@ -1,4 +1,5 @@
 import cherrypy
+import re
 import sys
 import json
 import urllib2
@@ -80,7 +81,7 @@ def saveMessage(user, UPI, sender, message, stamp, type):
     db = sqlite3.connect("db/Conversation.db")
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS {}(UPI TEXT NOT NULL, Sender TEXT NOT NULL, Message TEXT NOT NULL, Stamp TEXT NOT NULL, Type TEXT NOT NULL)'.format(user))
-    cursor.execute('INSERT INTO {}(UPI, SENDER, Message, Stamp, Type) VALUES (?,?,?,?,?)'.format(user), (UPI, sender, message.partition("<")[0], stamp, type))
+    cursor.execute('INSERT INTO {}(UPI, SENDER, Message, Stamp, Type) VALUES (?,?,?,?,?)'.format(user), (UPI, sender, re.sub("<.*?>", "", message), stamp, type))
     db.commit()
     db.close()
     return '0'
