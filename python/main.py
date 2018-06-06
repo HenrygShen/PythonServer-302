@@ -185,10 +185,10 @@ class MainApp(object):
         #Update your profile details
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
-        cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
-        cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (position, cherrypy.session['username']))
-        cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (description, cherrypy.session['username']))
-        cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location, cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name.partition("<")[0], cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (position.partition("<")[0], cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (description.partition("<")[0], cherrypy.session['username']))
+        cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (location.partition("<")[0], cherrypy.session['username']))
         if (str(picture.type) != "application/octet-stream"):
             cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("/static/displaypics/{0}{1}".format(cherrypy.session['username'],ext), cherrypy.session['username']))
         cursor.execute("UPDATE Profile SET stamp = ? WHERE UPI = ? ", (time.time(), cherrypy.session['username']))
@@ -216,10 +216,10 @@ class MainApp(object):
                 db = sqlite3.connect("db/Users.db")
                 cursor = db.cursor()
                 #Update user info
-                cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
-                cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
-                cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
-                cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
+                cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'].partition("<")[0], UPI))
+                cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'].partition("<")[0], UPI))
+                cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'].partition("<")[0], UPI))
+                cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'].partition("<")[0], UPI))
                 try:
                     if (userData['picture'] == ""):
                         cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/anon.png", UPI))
@@ -321,7 +321,7 @@ class MainApp(object):
     def receiveMessage(self):
         dataDict = cherrypy.request.json
         db = sqlite3.connect('db/Conversation.db')
-        functions.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'], dataDict['stamp'], "string")
+        functions.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], dataDict['message'].partition("<")[0], dataDict['stamp'], "string")
         return '0'
 	
 	#Send File API. Will only send a message 
