@@ -46,7 +46,7 @@ class MainApp(object):
         cherrypy.response.status = 404
         return Page
 
-    # PAGES (which return HTML that can be viewed in browser)
+    #Default page, prompts the user to log in
     @cherrypy.expose
     def index(self):
         return functions.readHtml("index")
@@ -72,18 +72,17 @@ class MainApp(object):
         hashedPW = sha256(password + username).hexdigest()
         #If location = 0, use local IP, otherwise use external ip
         ip = socket.gethostbyname(socket.gethostname())
-        print ip
         splitIP = ip.split(".")
         if (location == "0"):
             data = {'ip':socket.gethostbyname(socket.gethostname())}
         elif (splitIP[0] == "10"):
             location = "4"
+        else:
             try:
                 data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
             except:
                 logging.debug('Not able to retrieve info from the website, http://ip.jsontest.com/')
                 #hardcoded values for when the site is down/overloaded
-                print "location = " + location
                 if (location == "1"):
                     data = {'ip':'202.36.244.33'}
                 else:
@@ -292,7 +291,7 @@ class MainApp(object):
         data = functions.readUserData(destination)
         try:
             #Ping recipient
-            #urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=10)
+            urllib2.urlopen('http://{0}:{1}/ping?sender={2}'.format(data[6], data[7], cherrypy.session['username']), timeout=10)
             #Create a dictionary with the arguments and encode it to JSON
             stamp = time.time()
             dict = { "sender": cherrypy.session['username'], "message": message, "destination": destination, "stamp": stamp }
