@@ -1,9 +1,8 @@
-#!/usr/bin/python
 """ main.py
 
     COMPSYS302 - Software Design
     Author: Henry Shen (hshe440@aucklanduni.ac.nz)
-    Last Edited: 04/06/2018
+    Last Edited: 06/06/2018
 
     This program uses the CherryPy web server (from www.cherrypy.org).
 """
@@ -73,9 +72,12 @@ class MainApp(object):
         hashedPW = sha256(password + username).hexdigest()
         #If location = 0, use local IP, otherwise use external ip
         ip = socket.gethostbyname(socket.gethostname())
+        print ip
+        splitIP = ip.split(".")
         if (location == "0"):
             data = {'ip':socket.gethostbyname(socket.gethostname())}
-        else:
+        elif (splitIP[0] == "10"):
+            location = "4"
             try:
                 data = json.loads(urllib2.urlopen("http://ip.jsontest.com/").read())
             except:
@@ -143,12 +145,12 @@ class MainApp(object):
             #Button for profile editing
             Page += '<form action="/editProfile" method="post" enctype="multipart/form-data">'
             Page += '<input class= "button" type="submit" value="Edit Profile"/></form>'
+            #Button to signout
+            Page += '<form action="/logoff?username={0}&password={1}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'], cherrypy.session['password'])
+            Page += '<input class= "button" type="submit" value="Signout"/></form>'
         else:
             Page += '<form action="/profile" method="post" enctype="multipart/form-data">'
             Page += '<button name="user" value="{}" class="button"/>Return to Profile</button></form>'.format(cherrypy.session['username'])
-        #Button to signout
-        Page += '<form action="/logoff?username={0}&password={1}" method="post" enctype="multipart/form-data">'.format(cherrypy.session['username'], cherrypy.session['password'])
-        Page += '<input class= "button" type="submit" value="Signout"/></form>'
         return Page
 		
     #getProfile API
@@ -172,17 +174,16 @@ class MainApp(object):
         Page = functions.readHtml("editProfile")
         return Page.format(data[1], data[2], data[3], data[4])
 	
-	#Used to update the database with new user info
+    #Used to update the database with new user info
     @cherrypy.expose
     def writeInfo(self, name=None, position=None, description=None, picture=None, location=None):
         functions.checkLogged()
         if (str(picture.type) != "application/octet-stream"):
             #Get the file type and save a copy of the file to the working directory
             ext = mimetypes.guess_extension(str(picture.type))
-            currentDir = os.getcwd()
-            fName = currentDir + "/displaypics/" + cherrypy.session['username'] + ext
+            fName = "displaypics/{0}{1}".format(cherrypy.session['username'], ext)
             functions.saveFile(picture, fName)
-		#Update your profile details
+        #Update your profile details
         db = sqlite3.connect("db/Users.db")
         cursor = db.cursor()
         cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (name, cherrypy.session['username']))
@@ -215,18 +216,23 @@ class MainApp(object):
                 userData = json.loads(response.read())
                 db = sqlite3.connect("db/Users.db")
                 cursor = db.cursor()
-                #Save the picture to the working directory
-                currentDir = os.getcwd()
-                fName = "{0}/displaypics/{1}.jpg".format(currentDir, UPI)
-                f = open(fName,'wb')
-                f.write(urllib2.urlopen(userData['picture']).read())
-                f.close()
                 #Update user info
                 cursor.execute("UPDATE Profile SET Name = ? WHERE UPI = ? ", (userData['fullname'], UPI))
                 cursor.execute("UPDATE Profile SET Position = ? WHERE UPI = ? ", (userData['position'], UPI))
                 cursor.execute("UPDATE Profile SET Description = ? WHERE UPI = ? ", (userData['description'], UPI))
                 cursor.execute("UPDATE Profile SET Location = ? WHERE UPI = ? ", (userData['location'], UPI))
-                cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/{0}.jpg".format(UPI), UPI))
+                try:
+                    if (userData['picture'] == ""):
+                        cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/anon.png", UPI))
+                    else:
+                        #Save the picture to the working directory
+                        fName = "displaypics/{0}.jpg".format(UPI)
+                        f = open(fName,'wb')
+                        f.write(urllib2.urlopen(userData['picture']).read())
+                        f.close()
+                    cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/{0}.jpg".format(UPI), UPI))
+                except:
+                    cursor.execute("UPDATE Profile SET Picture = ? WHERE UPI = ? ", ("static/displaypics/anon.png", UPI))
                 db.commit()
                 db.close()
                 raise cherrypy.HTTPRedirect('/profile?user={}'.format(UPI))
@@ -333,8 +339,7 @@ class MainApp(object):
             ext = mimetypes.guess_extension(str(fData.type))
             if (ext == None):
                 ext = ".mp3"
-            currentDir = os.getcwd()
-            fName = currentDir + "/files/" + str(stamp) + ext
+            fName = "files/{0}{1}".format(str(stamp), ext)
             if fData.file:
                 outfile = file(fName, 'wb')
                 outfile.write(fData.file.read())
@@ -370,12 +375,12 @@ class MainApp(object):
     def receiveFile(self):
         #sender,destination,file,filename,content_type,stamp,
         dataDict = cherrypy.request.json
-        #Need to limit it to 5MB
-        #Need to save the sent file directory in the database
+        #Save the file to the working directory
         encodedData = base64.decodestring(dataDict['file'])
         result = open('files/{}'.format(dataDict['filename']), 'wb')
         result.write(encodedData)
         result.close()
+        #Save the sent file directory in the database
         functions.saveMessage(dataDict['destination'], dataDict['sender'], dataDict['sender'], '/static/files/{}'.format(dataDict['filename']), dataDict['stamp'], "notstring")
         return '0'
 	

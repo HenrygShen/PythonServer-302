@@ -6,8 +6,6 @@ import sqlite3
 import mimetypes
 import time
 from itertools import cycle, izip
-from hashlib import sha256
-import atexit
 	
 #Gets the list of online users and returns it on the right side of the page
 def getUsers(userLogged, Page):
@@ -103,11 +101,13 @@ def formatMessage(name, message, stamp, mType, Page):
         filePath = message.split("/")
         type = mimetypes.guess_type(filePath[3],strict = True)
         if (type[0] == 'image/jpeg' or type[0] == 'image/png' or type[0] == 'image/gif'):
-            Page += '{0}<br/>{1} :<br/> <img src="{2}" width="200" height="200"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
+            Page += '{0}<br/>{1} :<br/> <img src="{2}" max-width="700" max-height="600"><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message)
         elif (type[0] == 'video/mp4'):
-            Page += '{0}<br/>{1} :<br/> <video width="200" height="200" controls><source src="{2}" type="{3}"></video><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
+            Page += '{0}<br/>{1} :<br/> <video max-width="700" max-height="600" controls><source src="{2}" type="{3}"></video><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         elif (type[0] == 'audio/mpeg'):
             Page += '{0}<br/>{1} :<br/> <audio controls><source src="{2}" type="{3}"></audio><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
+        elif (type[0] == 'application/pdf'):
+            Page += '{0}<br/>{1} :<br/> <embed src ="{2}" width="700" height="600"/><br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, message, type[0])
         else:
             fName = message.split('/')
             Page += '{0}<br/>{1} :<br/> The file named "{2}" is not supported. Please check your local files to view it.<br/>'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(stamp))), name, fName[-1])
@@ -123,14 +123,6 @@ def saveFile(fData, fName):
         outfile = file(fName, 'wb')
         outfile.write(fData.file.read())
         outfile.close()
-		
-#Called on exit. If a user is logged in, it will log out the current user
-def exit_handler():
-    try:
-        r = urllib2.urlopen("http://cs302.pythonanywhere.com/logoff?username={0}&password={1}".format(cherrypy.session['username'], cherrypy.session['password']))
-    except:
-        pass
 
-atexit.register(exit_handler)
 reload(sys)  
 sys.setdefaultencoding('utf8')
